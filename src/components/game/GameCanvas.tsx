@@ -1,13 +1,15 @@
 import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { MatchScene } from "./MatchScene";
+import { BallTrail } from "./BallTrail";
 import { ControlsHint } from "./ControlsHint";
 import { PowerBar } from "./PowerBar";
 import { MatchHud } from "./MatchHud";
+import { SoundToggle } from "./SoundToggle";
 
 const SKY = "#8fc3e8";
 
-export function GameCanvas() {
+export function GameCanvas({ onExit }: { onExit?: () => void }) {
   return (
     <div className="fixed inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 26, 30], fov: 45, far: 600 }}>
@@ -41,8 +43,10 @@ export function GameCanvas() {
         </Environment>
 
         <MatchScene />
+        <BallTrail />
       </Canvas>
-      <MatchHud />
+      <MatchHud onExit={onExit} />
+      <SoundToggle />
       <PowerBar />
       <ControlsHint />
     </div>
