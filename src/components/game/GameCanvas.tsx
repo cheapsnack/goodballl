@@ -1,20 +1,14 @@
 import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
-import { Pitch } from "./Pitch";
-import { Goal } from "./Goal";
-import { PITCH_LENGTH } from "./pitchTexture";
+import { MatchScene } from "./MatchScene";
+import { ControlsHint } from "./ControlsHint";
 
 const SKY = "#8fc3e8";
 
 export function GameCanvas() {
   return (
     <div className="fixed inset-0">
-      <Canvas
-        shadows
-        dpr={[1, 2]}
-        camera={{ position: [0, 58, 92], fov: 45, far: 600 }}
-        onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
-      >
+      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 26, 30], fov: 45, far: 600 }}>
         <color attach="background" args={[SKY]} />
         <fog attach="fog" args={[SKY, 120, 320]} />
 
@@ -44,10 +38,9 @@ export function GameCanvas() {
           />
         </Environment>
 
-        <Pitch />
-        <Goal x={-PITCH_LENGTH / 2} side={-1} />
-        <Goal x={PITCH_LENGTH / 2} side={1} />
+        <MatchScene />
       </Canvas>
+      <ControlsHint />
     </div>
   );
 }
