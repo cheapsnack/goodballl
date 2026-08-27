@@ -323,8 +323,9 @@ describe("keeper vs ball integration", () => {
     expect(["diving", "recovering"]).toContain(r.phase);
   });
 
-  it("is beaten by a well-placed shot into the top corner", () => {
-    const r = step({ vx: 30, vz: 8, vy: 8 });
+  it("cannot claim a shot flying above the crossbar", () => {
+    const r = step({ vx: 30, vz: 3.5, vy: 14 });
     expect(r.saved).toBe(false);
+    expect(r.conceded).toBe(false);
   });
 });
