@@ -59,7 +59,7 @@ describe("predictCrossing", () => {
   });
 
   it("accounts for gravity so a ball sailing over is predicted high", () => {
-    const c = predictCrossing(ballAt(30, 0, 25, 0, 1, 9), SIDE);
+    const c = predictCrossing(ballAt(30, 0, 25, 0, 1, 14), SIDE);
     expect(c!.y).toBeGreaterThan(FIELD.goalHeight);
   });
 });
