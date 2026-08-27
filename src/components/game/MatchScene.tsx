@@ -119,7 +119,8 @@ export function MatchScene() {
     // --- outfield defenders ---
     const chaser = nearestDefenderIndex(store.defenders, ball);
     const defenders = store.defenders.map((d, i) => {
-      const ai = stepDefender(d, DEFENDER_ROLES[i], ball, i === chaser);
+      const role = DEFENDER_ROLES[i] ?? DEFENDER_ROLES[0]!;
+      const ai = stepDefender(d, role, ball, i === chaser);
       return clampToPitch(stepMovement(d, ai, defenderParams.current, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 

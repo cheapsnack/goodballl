@@ -193,7 +193,7 @@ describe("keeper saves", () => {
 });
 
 describe("defenders", () => {
-  const roles: DefenderRole[] = [
+  const roles: [DefenderRole, DefenderRole] = [
     { id: "l", side: SIDE, laneZ: -8.5 },
     { id: "r", side: SIDE, laneZ: 8.5 },
   ];
