@@ -260,8 +260,8 @@ describe("defenders", () => {
  * frame by frame and see whether a shot ends up in the net.
  */
 describe("keeper vs ball integration", () => {
-  const step = (shot: { vx: number; vz: number; vy?: number }) => {
-    let ball = ballAt(30, 0, shot.vx, shot.vz, BALL_RADIUS, shot.vy ?? 0);
+  const step = (shot: { vx: number; vz: number; vy?: number; from?: number }) => {
+    let ball = ballAt(shot.from ?? 30, 0, shot.vx, shot.vz, BALL_RADIUS, shot.vy ?? 0);
     let keeper = body(51.8, 0);
     let state = initialKeeperState();
     let conceded = false;
@@ -320,9 +320,16 @@ describe("keeper vs ball integration", () => {
     expect(r.conceded).toBe(false);
   });
 
-  it("dives at a shot toward the corner", () => {
-    const r = step({ vx: 26, vz: 7 });
+  it("dives at a snap shot from the edge of the box", () => {
+    // No time to shuffle across, so the only way to reach it is a dive.
+    const r = step({ from: 44, vx: 28, vz: 7 });
     expect(r.dived).toBe(true);
+  });
+
+  it("reads a long-range shot early and shuffles across without diving", () => {
+    const r = step({ from: 20, vx: 26, vz: 5 });
+    expect(r.dived).toBe(false);
+    expect(r.conceded).toBe(false);
   });
 
   it("cannot claim a shot flying above the crossbar", () => {
