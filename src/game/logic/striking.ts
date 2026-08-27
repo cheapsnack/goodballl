@@ -1,5 +1,5 @@
 import type { ActionInput, BallState, ChargeState, Kinematics, StrikeAction } from "../types";
-import { BALL_RADIUS, STRIKE_TUNING } from "./ballPhysics";
+import { STRIKE_TUNING } from "./ballPhysics";
 
 /** Stable identity so subscribers don't re-render while nothing is charging. */
 export const IDLE_CHARGE: ChargeState = { action: null, power: 0, elapsed: 0, loft: false };
