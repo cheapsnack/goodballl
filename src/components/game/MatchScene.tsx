@@ -106,6 +106,7 @@ export function MatchScene() {
       } else if (remaining > 0) {
         useGameStore.setState({ statusTimer: remaining });
       } else if (store.matchStatus === "kickoff") {
+        playWhistle(); // kickoff whistle as play resumes
         useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
       } else if (store.matchStatus === "goal") {
         store.resetPositions();
@@ -170,6 +171,7 @@ export function MatchScene() {
       const strike = resolveStrike(player, prevCharge);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
+      playKick(prevCharge.power);
     }
 
     // --- ball (dribble capture is suppressed right after a strike) ---
