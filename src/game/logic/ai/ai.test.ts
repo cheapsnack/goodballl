@@ -266,11 +266,13 @@ describe("keeper vs ball integration", () => {
     let state = initialKeeperState();
     let conceded = false;
     let saved = false;
+    let dived = false;
 
     for (let i = 0; i < 240; i++) {
       const dt = 1 / 60;
       const d = stepGoalkeeper(keeper, state, ball, SIDE, dt);
       state = d.state;
+      if (state.phase === "diving") dived = true;
       if (d.diveVelocity) {
         keeper = {
           ...keeper,
@@ -309,7 +311,7 @@ describe("keeper vs ball integration", () => {
         break;
       }
     }
-    return { conceded, saved, phase: state.phase };
+    return { conceded, saved, dived, phase: state.phase };
   };
 
   it("saves a shot hit straight down the middle", () => {
@@ -320,7 +322,7 @@ describe("keeper vs ball integration", () => {
 
   it("dives at a shot toward the corner", () => {
     const r = step({ vx: 26, vz: 7 });
-    expect(["diving", "recovering"]).toContain(r.phase);
+    expect(r.dived).toBe(true);
   });
 
   it("cannot claim a shot flying above the crossbar", () => {
