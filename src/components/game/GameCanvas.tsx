@@ -41,6 +41,7 @@ export function GameCanvas() {
 
         <MatchScene />
       </Canvas>
+      <PowerBar />
       <ControlsHint />
     </div>
   );
