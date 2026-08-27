@@ -20,15 +20,21 @@ const TRAIL_TUNING = {
  * stays readable; it only reads store state, never writes it.
  */
 export function BallTrail() {
-  const lineRef = useRef<THREE.Line>(null);
-  const matRef = useRef<THREE.LineBasicMaterial>(null);
   const accum = useRef(0);
 
-  const { geometry, positions } = useMemo(() => {
+  const { line, positions } = useMemo(() => {
     const positions = new Float32Array(TRAIL_TUNING.points * 3);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    return { geometry, positions };
+    const material = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    });
+    const line = new THREE.Line(geometry, material);
+    line.frustumCulled = false;
+    return { line, positions };
   }, []);
 
   useFrame((_, delta) => {
@@ -44,25 +50,16 @@ export function BallTrail() {
       positions[i] = ball.position.x;
       positions[i + 1] = ball.position.y;
       positions[i + 2] = ball.position.z;
-      geometry.attributes.position!.needsUpdate = true;
-      geometry.computeBoundingSphere();
+      line.geometry.attributes.position!.needsUpdate = true;
     }
 
-    if (matRef.current) {
-      const t =
-        (speed - TRAIL_TUNING.minSpeed) / (TRAIL_TUNING.fullSpeed - TRAIL_TUNING.minSpeed);
-      const target = THREE.MathUtils.clamp(t, 0, 1) * 0.55;
-      // Ease so the ribbon fades rather than popping in and out.
-      matRef.current.opacity = THREE.MathUtils.lerp(matRef.current.opacity, target, 0.2);
-    }
-    if (lineRef.current) lineRef.current.visible = (matRef.current?.opacity ?? 0) > 0.01;
+    const material = line.material as THREE.LineBasicMaterial;
+    const t = (speed - TRAIL_TUNING.minSpeed) / (TRAIL_TUNING.fullSpeed - TRAIL_TUNING.minSpeed);
+    const target = THREE.MathUtils.clamp(t, 0, 1) * 0.55;
+    // Ease so the ribbon fades rather than popping in and out.
+    material.opacity = THREE.MathUtils.lerp(material.opacity, target, 0.2);
+    line.visible = material.opacity > 0.01;
   });
 
-  return (
-    // @ts-expect-error three's Line element is valid in r3f but not in the JSX intrinsics map
-    <line ref={lineRef} geometry={geometry} frustumCulled={false}>
-      <lineBasicMaterial ref={matRef} color="#ffffff" transparent opacity={0} depthWrite={false} />
-      {/* @ts-expect-error see above */}
-    </line>
-  );
+  return <primitive object={line} />;
 }
