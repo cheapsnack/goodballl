@@ -6,6 +6,7 @@ import type { CameraMode } from "../logic/camera";
 import { FIELD } from "../logic/field";
 import { initialKeeperState, keeperHome, type KeeperState } from "../logic/ai/goalkeeper";
 import type { DefenderRole } from "../logic/ai/defender";
+import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 
 export const PITCH = {
   length: FIELD.length,
@@ -72,38 +73,77 @@ type GameState = {
   /** seconds remaining before the player can re-capture the ball */
   strikeCooldown: number;
 
+  /** --- match state (HUD-facing, updated at most a few times a second) --- */
+  score: Score;
+  /** seconds elapsed in the current period */
+  matchTime: number;
+  /** 1-based period index */
+  period: number;
+  matchStatus: MatchStatus;
+  /** seconds remaining in the current non-playing status */
+  statusTimer: number;
+  /** who scored the goal currently being celebrated */
+  lastScorer: TeamSide | null;
+
   setPlayer: (p: Kinematics) => void;
   setBall: (b: BallState) => void;
   setInput: (i: MovementInput) => void;
   setCameraMode: (m: CameraMode) => void;
+
+  setMatchStatus: (status: MatchStatus, statusTimer?: number) => void;
+  setMatchTime: (matchTime: number) => void;
+  recordGoal: (scorer: TeamSide) => void;
+  /** Puts bodies back to kickoff shape without touching score or clock. */
+  resetPositions: () => void;
   resetMatch: () => void;
 };
 
-export const useGameStore = create<GameState>((set) => ({
+const kickoffBodies = () => ({
   player: initialPlayer(),
   ball: initialBall(),
-  input: { x: 0, z: 0, sprint: false },
-  cameraMode: "broadcast",
-
   keeper: initialKeeper(),
   keeperState: initialKeeperState(),
   defenders: initialDefenders(),
-
   charge: IDLE_CHARGE,
   strikeCooldown: 0,
+});
+
+export const useGameStore = create<GameState>((set) => ({
+  ...kickoffBodies(),
+  input: { x: 0, z: 0, sprint: false },
+  cameraMode: "broadcast",
+
+  score: { home: 0, away: 0 },
+  matchTime: 0,
+  period: 1,
+  matchStatus: "kickoff",
+  statusTimer: MATCH_TUNING.kickoffPause,
+  lastScorer: null,
 
   setPlayer: (player) => set({ player }),
   setBall: (ball) => set({ ball }),
   setInput: (input) => set({ input }),
   setCameraMode: (cameraMode) => set({ cameraMode }),
+
+  setMatchStatus: (matchStatus, statusTimer = 0) => set({ matchStatus, statusTimer }),
+  setMatchTime: (matchTime) => set({ matchTime }),
+  recordGoal: (scorer) =>
+    set((s) => ({
+      score: { ...s.score, [scorer]: s.score[scorer] + 1 },
+      matchStatus: "goal",
+      statusTimer: MATCH_TUNING.goalCelebration,
+      lastScorer: scorer,
+    })),
+  resetPositions: () => set(kickoffBodies()),
   resetMatch: () =>
     set({
-      player: initialPlayer(),
-      ball: initialBall(),
-      keeper: initialKeeper(),
-      keeperState: initialKeeperState(),
-      defenders: initialDefenders(),
-      charge: IDLE_CHARGE,
-      strikeCooldown: 0,
+      ...kickoffBodies(),
+      score: { home: 0, away: 0 },
+      matchTime: 0,
+      period: 1,
+      matchStatus: "kickoff",
+      statusTimer: MATCH_TUNING.kickoffPause,
+      lastScorer: null,
     }),
 }));
+

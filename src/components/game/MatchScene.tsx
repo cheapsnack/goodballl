@@ -27,6 +27,7 @@ import { canStrike, resolveStrike, stepCharge } from "../../game/logic/striking"
 import { stepBroadcastCamera, type CameraFrame } from "../../game/logic/camera";
 import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
+import { detectGoal, isPlayFrozen, MATCH_TUNING } from "../../game/logic/match";
 import type { Kinematics, MovementInput } from "../../game/types";
 
 // Placeholder attributes until club data is wired in (Phase 9).
@@ -51,10 +52,95 @@ export function MatchScene() {
     lookAt: { x: 0, y: 0, z: 0 },
   });
 
+  /** Pushes simulation bodies onto the three.js meshes. */
+  const syncMeshes = (
+    s: {
+      player: Kinematics;
+      ball: import("../../game/types").BallState;
+      keeper: Kinematics;
+      keeperState: { phase: string; diveDir: number };
+      defenders: Kinematics[];
+    },
+    dt: number,
+  ) => {
+    if (playerRef.current) {
+      playerRef.current.position.set(s.player.position.x, 0, s.player.position.z);
+      playerRef.current.rotation.y = s.player.heading;
+    }
+    if (keeperRef.current) {
+      keeperRef.current.position.set(s.keeper.position.x, 0, s.keeper.position.z);
+      keeperRef.current.rotation.y = s.keeper.heading;
+      // Tip the body over during a dive — cheap but reads instantly.
+      keeperRef.current.rotation.x =
+        s.keeperState.phase === "diving" ? s.keeperState.diveDir * 0.95 : 0;
+    }
+    s.defenders.forEach((d, i) => {
+      const ref = defenderRefs.current[i];
+      if (!ref) return;
+      ref.position.set(d.position.x, 0, d.position.z);
+      ref.rotation.y = d.heading;
+    });
+    if (ballRef.current) {
+      ballRef.current.position.set(s.ball.position.x, s.ball.position.y, s.ball.position.z);
+      const speed = Math.hypot(s.ball.velocity.x, s.ball.velocity.z);
+      if (speed > 0.01 && dt > 0) {
+        const axis = new THREE.Vector3(s.ball.velocity.z, 0, -s.ball.velocity.x).normalize();
+        ballRef.current.rotateOnWorldAxis(axis, (speed / 0.36) * dt);
+      }
+    }
+  };
+
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const store = useGameStore.getState();
     const keys = input.current;
+
+    // --- match state machine ---
+    // Non-playing statuses freeze the sim; the camera still runs below so the
+    // celebration/kickoff shot stays alive.
+    if (isPlayFrozen(store.matchStatus) || store.matchStatus === "kickoff") {
+      const remaining = store.statusTimer - dt;
+      if (store.matchStatus === "fulltime") {
+        // Match over: hold everything.
+      } else if (remaining > 0) {
+        useGameStore.setState({ statusTimer: remaining });
+      } else if (store.matchStatus === "kickoff") {
+        useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
+      } else if (store.matchStatus === "goal") {
+        store.resetPositions();
+        useGameStore.setState({
+          matchStatus: "kickoff",
+          statusTimer: MATCH_TUNING.kickoffPause,
+        });
+      } else if (store.matchStatus === "halftime") {
+        store.resetPositions();
+        useGameStore.setState({
+          period: store.period + 1,
+          matchTime: 0,
+          matchStatus: "kickoff",
+          statusTimer: MATCH_TUNING.kickoffPause,
+        });
+      }
+
+      const frozen = store.ball;
+      camFrame.current = stepBroadcastCamera(
+        camFrame.current,
+        frozen.position,
+        { x: 0, y: 0, z: 0 },
+        dt,
+      );
+      const cf = camFrame.current;
+      camera.position.set(cf.position.x, cf.position.y, cf.position.z);
+      camera.lookAt(cf.lookAt.x, cf.lookAt.y, cf.lookAt.z);
+
+      // Snap meshes to the (possibly reset) bodies so kickoff looks right.
+      const s2 = useGameStore.getState();
+      syncMeshes(s2, 0);
+      return;
+    }
+
+    // --- clock ---
+    const matchTime = store.matchTime + dt * MATCH_TUNING.clockScale;
 
     // --- charge ---
     const prevCharge = store.charge;
@@ -129,9 +215,27 @@ export function MatchScene() {
       ball = resolvePlayerBall(ball, d, PLAYER_RADIUS, dt);
     }
 
+    // --- goal detection & period end ---
+    const goal = detectGoal(store.ball, ball);
+    if (goal) {
+      useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown, keeper, keeperState, defenders, matchTime });
+      useGameStore.getState().recordGoal(goal.scorer);
+      return;
+    }
+
+    if (matchTime >= MATCH_TUNING.periodSeconds) {
+      useGameStore.setState({
+        matchTime: MATCH_TUNING.periodSeconds,
+        matchStatus: store.period >= MATCH_TUNING.periods ? "fulltime" : "halftime",
+        statusTimer: MATCH_TUNING.halfTimePause,
+      });
+      return;
+    }
+
     useGameStore.setState({
       player,
       ball,
+      matchTime,
       charge,
       strikeCooldown: cooldown,
       keeper,
@@ -139,32 +243,8 @@ export function MatchScene() {
       defenders,
     });
 
-    // --- meshes ---
-    if (playerRef.current) {
-      playerRef.current.position.set(player.position.x, 0, player.position.z);
-      playerRef.current.rotation.y = player.heading;
-    }
-    if (keeperRef.current) {
-      keeperRef.current.position.set(keeper.position.x, 0, keeper.position.z);
-      keeperRef.current.rotation.y = keeper.heading;
-      // Tip the body over during a dive — cheap but reads instantly.
-      keeperRef.current.rotation.x =
-        keeperState.phase === "diving" ? keeperState.diveDir * 0.95 : 0;
-    }
-    defenders.forEach((d, i) => {
-      const ref = defenderRefs.current[i];
-      if (!ref) return;
-      ref.position.set(d.position.x, 0, d.position.z);
-      ref.rotation.y = d.heading;
-    });
-    if (ballRef.current) {
-      ballRef.current.position.set(ball.position.x, ball.position.y, ball.position.z);
-      const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
-      if (speed > 0.01) {
-        const axis = new THREE.Vector3(ball.velocity.z, 0, -ball.velocity.x).normalize();
-        ballRef.current.rotateOnWorldAxis(axis, (speed / 0.36) * dt);
-      }
-    }
+    syncMeshes({ player, ball, keeper, keeperState, defenders }, dt);
+
 
     // --- camera (broadcast follow, smoothed) ---
     camFrame.current = stepBroadcastCamera(camFrame.current, ball.position, ball.velocity, dt);
