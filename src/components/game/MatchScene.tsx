@@ -28,6 +28,7 @@ import { stepBroadcastCamera, type CameraFrame } from "../../game/logic/camera";
 import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
 import { detectGoal, isPlayFrozen, MATCH_TUNING } from "../../game/logic/match";
+import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
 import type { Kinematics, MovementInput } from "../../game/types";
 
 // Placeholder attributes until club data is wired in (Phase 9).
