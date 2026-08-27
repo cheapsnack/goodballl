@@ -23,6 +23,75 @@ export const BALL_TUNING = {
   maxSpeed: 42,
 } as const;
 
+/**
+ * Striking feel. All shooting/passing numbers live here — nothing downstream
+ * should hardcode a speed, a charge time, or a loft ratio.
+ */
+export const STRIKE_TUNING = {
+  /** seconds of holding to reach full power */
+  chargeTime: 0.85,
+  /** power floor on an instant tap (0..1) */
+  minPower: 0.24,
+  /** how much of the player's closing speed is added to the strike */
+  momentumTransfer: 0.4,
+  /** seconds after a strike where the dribble pull is disabled */
+  cooldown: 0.3,
+  /** how close the ball must be to be strikeable */
+  reach: 2.1,
+  /** ball can't be struck above this height */
+  maxStrikeHeight: 1.6,
+  /** movement input is scaled by this while charging */
+  chargeMoveScale: 0.74,
+  /** pass assist blend toward a target (0 = none, 1 = fully homing) */
+  assistWeight: 0.55,
+  /** target must be at least this aligned with facing to attract the pass */
+  assistMinAlignment: 0.35,
+
+  shot: {
+    minSpeed: 13,
+    maxSpeed: 35,
+    /** vertical:horizontal ratio with the loft modifier held */
+    loftRatio: 0.5,
+    /** vertical:horizontal ratio for a driven shot */
+    baseLoftRatio: 0.05,
+  },
+  pass: {
+    minSpeed: 8,
+    maxSpeed: 21,
+    loftRatio: 0.34,
+    baseLoftRatio: 0,
+  },
+} as const;
+
+/**
+ * Applies an instantaneous kick to the ball. Pure — sets velocity only and
+ * never integrates, so it composes with stepBall instead of fighting it.
+ */
+export function applyImpulse(
+  ball: BallState,
+  direction: { x: number; z: number },
+  speed: number,
+  lift = 0,
+): BallState {
+  const len = Math.hypot(direction.x, direction.z) || 1;
+  const nx = direction.x / len;
+  const nz = direction.z / len;
+
+  const capped = Math.min(speed, BALL_TUNING.maxSpeed);
+
+  return {
+    ...ball,
+    // Nudge off the deck so the very next stepBall doesn't treat a lofted
+    // ball as grounded and cancel its vertical velocity.
+    position: {
+      ...ball.position,
+      y: lift > 0 ? Math.max(ball.position.y, BALL_RADIUS + 0.02) : ball.position.y,
+    },
+    velocity: { x: nx * capped, y: lift, z: nz * capped },
+    heading: Math.atan2(nx, nz),
+  };
+}
+
 export type BallStepOptions = {
   halfLength: number;
   halfWidth: number;
