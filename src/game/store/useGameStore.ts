@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import type { BallState, Kinematics, MovementInput } from "../types";
+import type { BallState, ChargeState, Kinematics, MovementInput } from "../types";
 import { BALL_RADIUS } from "../logic/ballPhysics";
+import { IDLE_CHARGE } from "../logic/striking";
 import type { CameraMode } from "../logic/camera";
 
 export const PITCH = {
@@ -36,6 +37,14 @@ type GameState = {
   input: MovementInput;
   cameraMode: CameraMode;
 
+  /**
+   * Strike state. `charge` keeps a stable reference while idle so the power
+   * bar only re-renders during an actual charge.
+   */
+  charge: ChargeState;
+  /** seconds remaining before the player can re-capture the ball */
+  strikeCooldown: number;
+
   setPlayer: (p: Kinematics) => void;
   setBall: (b: BallState) => void;
   setInput: (i: MovementInput) => void;
@@ -49,9 +58,18 @@ export const useGameStore = create<GameState>((set) => ({
   input: { x: 0, z: 0, sprint: false },
   cameraMode: "broadcast",
 
+  charge: IDLE_CHARGE,
+  strikeCooldown: 0,
+
   setPlayer: (player) => set({ player }),
   setBall: (ball) => set({ ball }),
   setInput: (input) => set({ input }),
   setCameraMode: (cameraMode) => set({ cameraMode }),
-  resetMatch: () => set({ player: initialPlayer(), ball: initialBall() }),
+  resetMatch: () =>
+    set({
+      player: initialPlayer(),
+      ball: initialBall(),
+      charge: IDLE_CHARGE,
+      strikeCooldown: 0,
+    }),
 }));

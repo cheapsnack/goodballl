@@ -49,3 +49,29 @@ export type BallState = Kinematics & {
   /** Spin/roll angle used purely for visual rolling. */
   spin: number;
 };
+
+/** Which kind of strike is being charged. */
+export type StrikeAction = "shoot" | "pass";
+
+/** Action keys, read alongside MovementInput from the same input ref. */
+export type ActionInput = {
+  shoot: boolean;
+  pass: boolean;
+  /** Loft modifier — turns a driven strike into a lofted one. */
+  loft: boolean;
+};
+
+/** Everything the input hook produces in one frame. */
+export type PlayerInput = MovementInput & ActionInput;
+
+/** Charge-up state for the current strike, advanced every frame. */
+export type ChargeState = {
+  /** null when nothing is being charged. */
+  action: StrikeAction | null;
+  /** 0..1 normalized power. */
+  power: number;
+  /** seconds the key has been held. */
+  elapsed: number;
+  /** whether the loft modifier was held during the charge. */
+  loft: boolean;
+};

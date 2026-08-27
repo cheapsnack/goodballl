@@ -2,6 +2,7 @@ import { Canvas } from "@react-three/fiber";
 import { Environment, Lightformer } from "@react-three/drei";
 import { MatchScene } from "./MatchScene";
 import { ControlsHint } from "./ControlsHint";
+import { PowerBar } from "./PowerBar";
 
 const SKY = "#8fc3e8";
 
@@ -40,6 +41,7 @@ export function GameCanvas() {
 
         <MatchScene />
       </Canvas>
+      <PowerBar />
       <ControlsHint />
     </div>
   );

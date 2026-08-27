@@ -1,9 +1,22 @@
+const Key = ({ children }: { children: React.ReactNode }) => (
+  <span className="font-semibold">{children}</span>
+);
+
+const Sep = () => <span className="mx-2 opacity-40">|</span>;
+
 export function ControlsHint() {
   return (
     <div className="pointer-events-none fixed bottom-4 left-4 rounded-md bg-foreground/70 px-3 py-2 font-mono text-xs text-background backdrop-blur-sm">
-      <span className="font-semibold">WASD / Arrows</span> move
-      <span className="mx-2 opacity-50">|</span>
-      <span className="font-semibold">Shift</span> sprint
+      <Key>WASD / Arrows</Key> move
+      <Sep />
+      <Key>Shift</Key> sprint
+      <Sep />
+      <Key>Space</Key> shoot
+      <Sep />
+      <Key>E</Key> pass
+      <Sep />
+      <Key>Ctrl</Key> loft
+      <span className="ml-2 opacity-60">(hold to charge)</span>
     </div>
   );
 }

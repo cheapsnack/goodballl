@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { MovementInput } from "../game/types";
+import type { PlayerInput } from "../game/types";
 
 const KEYS: Record<string, string> = {
   KeyW: "up",
@@ -12,14 +12,25 @@ const KEYS: Record<string, string> = {
   ArrowRight: "right",
   ShiftLeft: "sprint",
   ShiftRight: "sprint",
+  Space: "shoot",
+  KeyE: "pass",
+  ControlLeft: "loft",
+  ControlRight: "loft",
 };
 
 /**
- * Returns a ref holding the current normalized movement input.
+ * Returns a ref holding the current movement + action input.
  * A ref (not state) so holding a key doesn't re-render every frame.
  */
 export function useKeyboardInput() {
-  const input = useRef<MovementInput>({ x: 0, z: 0, sprint: false });
+  const input = useRef<PlayerInput>({
+    x: 0,
+    z: 0,
+    sprint: false,
+    shoot: false,
+    pass: false,
+    loft: false,
+  });
   const held = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -32,12 +43,20 @@ export function useKeyboardInput() {
         x /= mag;
         z /= mag;
       }
-      input.current = { x, z, sprint: h.has("sprint") };
+      input.current = {
+        x,
+        z,
+        sprint: h.has("sprint"),
+        shoot: h.has("shoot"),
+        pass: h.has("pass"),
+        loft: h.has("loft"),
+      };
     };
 
     const down = (e: KeyboardEvent) => {
       const action = KEYS[e.code];
       if (!action) return;
+      // Space would scroll the page, Ctrl combos are browser shortcuts.
       e.preventDefault();
       held.current.add(action);
       apply();
