@@ -223,10 +223,14 @@ export function MatchScene() {
     if (goal) {
       useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown, keeper, keeperState, defenders, matchTime });
       useGameStore.getState().recordGoal(goal.scorer);
+      playWhistle();
+      if (goal.scorer === "home") playCrowdRoar();
+      else playCrowdGroan();
       return;
     }
 
     if (matchTime >= MATCH_TUNING.periodSeconds) {
+      playWhistle();
       useGameStore.setState({
         matchTime: MATCH_TUNING.periodSeconds,
         matchStatus: store.period >= MATCH_TUNING.periods ? "fulltime" : "halftime",
