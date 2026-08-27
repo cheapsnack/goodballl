@@ -5,9 +5,9 @@ export type CameraMode = "broadcast" | "run";
 export const CAMERA_TUNING = {
   broadcast: {
     /** height above the pitch */
-    height: 26,
+    height: 33,
     /** distance back from the target along +z */
-    distance: 30,
+    distance: 38,
     /** how far the cam drifts horizontally with play (0..1 of target x) */
     trackX: 0.55,
     /** clamp on horizontal drift so the cam stays broadcast-ish */
