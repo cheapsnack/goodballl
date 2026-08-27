@@ -6,6 +6,7 @@ import type { CameraMode } from "../logic/camera";
 import { FIELD } from "../logic/field";
 import { initialKeeperState, keeperHome, type KeeperState } from "../logic/ai/goalkeeper";
 import type { DefenderRole } from "../logic/ai/defender";
+import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 
 export const PITCH = {
   length: FIELD.length,
