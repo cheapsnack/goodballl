@@ -102,5 +102,3 @@ export function resolveStrike(
   return { direction: { x: dx, z: dz }, speed, lift: speed * loftRatio };
 }
 
-/** Ball sits on the deck; used when placing it back at the player's feet. */
-export const GROUND_Y = BALL_RADIUS;
