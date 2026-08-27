@@ -28,6 +28,7 @@ import { stepBroadcastCamera, type CameraFrame } from "../../game/logic/camera";
 import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
 import { detectGoal, isPlayFrozen, MATCH_TUNING } from "../../game/logic/match";
+import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
 import type { Kinematics, MovementInput } from "../../game/types";
 
 // Placeholder attributes until club data is wired in (Phase 9).
@@ -105,6 +106,7 @@ export function MatchScene() {
       } else if (remaining > 0) {
         useGameStore.setState({ statusTimer: remaining });
       } else if (store.matchStatus === "kickoff") {
+        playWhistle(); // kickoff whistle as play resumes
         useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
       } else if (store.matchStatus === "goal") {
         store.resetPositions();
@@ -169,6 +171,7 @@ export function MatchScene() {
       const strike = resolveStrike(player, prevCharge);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
+      playKick(prevCharge.power);
     }
 
     // --- ball (dribble capture is suppressed right after a strike) ---
@@ -220,10 +223,14 @@ export function MatchScene() {
     if (goal) {
       useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown, keeper, keeperState, defenders, matchTime });
       useGameStore.getState().recordGoal(goal.scorer);
+      playWhistle();
+      if (goal.scorer === "home") playCrowdRoar();
+      else playCrowdGroan();
       return;
     }
 
     if (matchTime >= MATCH_TUNING.periodSeconds) {
+      playWhistle();
       useGameStore.setState({
         matchTime: MATCH_TUNING.periodSeconds,
         matchStatus: store.period >= MATCH_TUNING.periods ? "fulltime" : "halftime",
