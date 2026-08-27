@@ -52,6 +52,44 @@ export function MatchScene() {
     lookAt: { x: 0, y: 0, z: 0 },
   });
 
+  /** Pushes simulation bodies onto the three.js meshes. */
+  const syncMeshes = (
+    s: {
+      player: Kinematics;
+      ball: import("../../game/types").BallState;
+      keeper: Kinematics;
+      keeperState: { phase: string; diveDir: number };
+      defenders: Kinematics[];
+    },
+    dt: number,
+  ) => {
+    if (playerRef.current) {
+      playerRef.current.position.set(s.player.position.x, 0, s.player.position.z);
+      playerRef.current.rotation.y = s.player.heading;
+    }
+    if (keeperRef.current) {
+      keeperRef.current.position.set(s.keeper.position.x, 0, s.keeper.position.z);
+      keeperRef.current.rotation.y = s.keeper.heading;
+      // Tip the body over during a dive — cheap but reads instantly.
+      keeperRef.current.rotation.x =
+        s.keeperState.phase === "diving" ? s.keeperState.diveDir * 0.95 : 0;
+    }
+    s.defenders.forEach((d, i) => {
+      const ref = defenderRefs.current[i];
+      if (!ref) return;
+      ref.position.set(d.position.x, 0, d.position.z);
+      ref.rotation.y = d.heading;
+    });
+    if (ballRef.current) {
+      ballRef.current.position.set(s.ball.position.x, s.ball.position.y, s.ball.position.z);
+      const speed = Math.hypot(s.ball.velocity.x, s.ball.velocity.z);
+      if (speed > 0.01 && dt > 0) {
+        const axis = new THREE.Vector3(s.ball.velocity.z, 0, -s.ball.velocity.x).normalize();
+        ballRef.current.rotateOnWorldAxis(axis, (speed / 0.36) * dt);
+      }
+    }
+  };
+
   useFrame((_, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const store = useGameStore.getState();
@@ -97,7 +135,7 @@ export function MatchScene() {
 
       // Snap meshes to the (possibly reset) bodies so kickoff looks right.
       const s2 = useGameStore.getState();
-      syncMeshes(s2);
+      syncMeshes(s2, 0);
       return;
     }
 
