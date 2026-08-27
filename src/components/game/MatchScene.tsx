@@ -205,32 +205,8 @@ export function MatchScene() {
       defenders,
     });
 
-    // --- meshes ---
-    if (playerRef.current) {
-      playerRef.current.position.set(player.position.x, 0, player.position.z);
-      playerRef.current.rotation.y = player.heading;
-    }
-    if (keeperRef.current) {
-      keeperRef.current.position.set(keeper.position.x, 0, keeper.position.z);
-      keeperRef.current.rotation.y = keeper.heading;
-      // Tip the body over during a dive — cheap but reads instantly.
-      keeperRef.current.rotation.x =
-        keeperState.phase === "diving" ? keeperState.diveDir * 0.95 : 0;
-    }
-    defenders.forEach((d, i) => {
-      const ref = defenderRefs.current[i];
-      if (!ref) return;
-      ref.position.set(d.position.x, 0, d.position.z);
-      ref.rotation.y = d.heading;
-    });
-    if (ballRef.current) {
-      ballRef.current.position.set(ball.position.x, ball.position.y, ball.position.z);
-      const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
-      if (speed > 0.01) {
-        const axis = new THREE.Vector3(ball.velocity.z, 0, -ball.velocity.x).normalize();
-        ballRef.current.rotateOnWorldAxis(axis, (speed / 0.36) * dt);
-      }
-    }
+    syncMeshes({ player, ball, keeper, keeperState, defenders }, dt);
+
 
     // --- camera (broadcast follow, smoothed) ---
     camFrame.current = stepBroadcastCamera(camFrame.current, ball.position, ball.velocity, dt);
