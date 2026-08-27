@@ -12,7 +12,7 @@ export function GameCanvas() {
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [0, 42, 62], fov: 45 }}
+        camera={{ position: [0, 58, 92], fov: 45, far: 600 }}
         onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
       >
         <color attach="background" args={[SKY]} />
