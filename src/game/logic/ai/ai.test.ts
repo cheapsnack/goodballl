@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BallState, Kinematics } from "../../types";
-import { BALL_RADIUS } from "../ballPhysics";
+import { BALL_RADIUS, stepBall } from "../ballPhysics";
 import { FIELD, goalLineX } from "../field";
 import {
   initialKeeperState,
@@ -252,5 +252,79 @@ describe("defenders", () => {
         expect(Math.hypot(i.x, i.z)).toBeLessThanOrEqual(1.0001);
       }
     }
+  });
+});
+
+/**
+ * Full-loop integration: run the real ball physics + keeper state machine
+ * frame by frame and see whether a shot ends up in the net.
+ */
+describe("keeper vs ball integration", () => {
+  const step = (shot: { vx: number; vz: number; vy?: number }) => {
+    let ball = ballAt(30, 0, shot.vx, shot.vz, BALL_RADIUS, shot.vy ?? 0);
+    let keeper = body(51.8, 0);
+    let state = initialKeeperState();
+    let conceded = false;
+    let saved = false;
+
+    for (let i = 0; i < 240; i++) {
+      const dt = 1 / 60;
+      const d = stepGoalkeeper(keeper, state, ball, SIDE, dt);
+      state = d.state;
+      if (d.diveVelocity) {
+        keeper = {
+          ...keeper,
+          position: {
+            ...keeper.position,
+            x: keeper.position.x + d.diveVelocity.x * dt,
+            z: keeper.position.z + d.diveVelocity.z * dt,
+          },
+        };
+      } else {
+        // Approximate stepMovement with direct steering; good enough to test intent.
+        keeper = {
+          ...keeper,
+          position: {
+            ...keeper.position,
+            x: keeper.position.x + d.input.x * 7 * dt,
+            z: keeper.position.z + d.input.z * 7 * dt,
+          },
+        };
+      }
+
+      const parried = tryKeeperSave(ball, keeper, state, SIDE);
+      if (parried) {
+        ball = parried;
+        saved = true;
+      }
+      ball = stepBall(ball, dt, { halfLength: FIELD.halfLength, halfWidth: FIELD.halfWidth });
+
+      if (
+        !saved &&
+        ball.position.x >= FIELD.halfLength &&
+        Math.abs(ball.position.z) < FIELD.goalHalfWidth &&
+        ball.position.y < FIELD.goalHeight
+      ) {
+        conceded = true;
+        break;
+      }
+    }
+    return { conceded, saved, phase: state.phase };
+  };
+
+  it("saves a shot hit straight down the middle", () => {
+    const r = step({ vx: 26, vz: 0 });
+    expect(r.saved).toBe(true);
+    expect(r.conceded).toBe(false);
+  });
+
+  it("dives at a shot toward the corner", () => {
+    const r = step({ vx: 26, vz: 7 });
+    expect(["diving", "recovering"]).toContain(r.phase);
+  });
+
+  it("is beaten by a well-placed shot into the top corner", () => {
+    const r = step({ vx: 30, vz: 8, vy: 8 });
+    expect(r.saved).toBe(false);
   });
 });
