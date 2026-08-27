@@ -9,7 +9,13 @@ import { Ball } from "./Ball";
 import { PITCH_LENGTH } from "./pitchTexture";
 
 import { useKeyboardInput } from "../../hooks/useKeyboardInput";
-import { PITCH, PLAYER_RADIUS, useGameStore } from "../../game/store/useGameStore";
+import {
+  DEFENDER_ROLES,
+  DEFENDING_SIDE,
+  PITCH,
+  PLAYER_RADIUS,
+  useGameStore,
+} from "../../game/store/useGameStore";
 import { clampToPitch, paramsFromAttributes, stepMovement } from "../../game/logic/movement";
 import {
   applyImpulse,
@@ -19,10 +25,14 @@ import {
 } from "../../game/logic/ballPhysics";
 import { canStrike, resolveStrike, stepCharge } from "../../game/logic/striking";
 import { stepBroadcastCamera, type CameraFrame } from "../../game/logic/camera";
-import type { MovementInput } from "../../game/types";
+import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
+import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
+import type { Kinematics, MovementInput } from "../../game/types";
 
 // Placeholder attributes until club data is wired in (Phase 9).
 const CONTROLLED_ATTRS = { pace: 74, dribble: 72 };
+const KEEPER_ATTRS = { pace: 66, dribble: 60 };
+const DEFENDER_ATTRS = { pace: 70, dribble: 64 };
 
 export function MatchScene() {
   const input = useKeyboardInput();
@@ -30,7 +40,12 @@ export function MatchScene() {
 
   const playerRef = useRef<THREE.Group>(null);
   const ballRef = useRef<THREE.Group>(null);
+  const keeperRef = useRef<THREE.Group>(null);
+  const defenderRefs = useRef<(THREE.Group | null)[]>([]);
+
   const params = useRef(paramsFromAttributes(CONTROLLED_ATTRS));
+  const keeperParams = useRef(paramsFromAttributes(KEEPER_ATTRS));
+  const defenderParams = useRef(paramsFromAttributes(DEFENDER_ATTRS));
   const camFrame = useRef<CameraFrame>({
     position: { x: 0, y: 26, z: 30 },
     lookAt: { x: 0, y: 0, z: 0 },
@@ -64,7 +79,7 @@ export function MatchScene() {
     let cooldown = Math.max(0, store.strikeCooldown - dt);
 
     if (released && canStrike(player, ball)) {
-      // No target passed yet — teammates arrive in step 2 and plug in here.
+      // No teammates yet, so no pass target to assist toward.
       const strike = resolveStrike(player, prevCharge);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
@@ -76,13 +91,72 @@ export function MatchScene() {
     }
     ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
-    useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown });
+    // --- goalkeeper ---
+    const decision = stepGoalkeeper(store.keeper, store.keeperState, ball, DEFENDING_SIDE, dt);
+    let keeper: Kinematics;
+    if (decision.diveVelocity) {
+      // Diving is scripted motion: drive the body directly rather than through
+      // the acceleration model, so the dive stays snappy and readable.
+      const v = decision.diveVelocity;
+      keeper = {
+        position: {
+          x: store.keeper.position.x + v.x * dt,
+          y: 0,
+          z: store.keeper.position.z + v.z * dt,
+        },
+        velocity: { x: v.x, y: 0, z: v.z },
+        heading: -DEFENDING_SIDE * (Math.PI / 2),
+      };
+    } else {
+      keeper = stepMovement(store.keeper, decision.input, keeperParams.current, dt);
+    }
+    keeper = clampToPitch(keeper, PITCH.halfLength, PITCH.halfWidth, 1.5);
+
+    const keeperState = decision.state;
+    const saved = tryKeeperSave(ball, keeper, keeperState, DEFENDING_SIDE);
+    if (saved) ball = saved;
+
+    // --- outfield defenders ---
+    const chaser = nearestDefenderIndex(store.defenders, ball);
+    const defenders = store.defenders.map((d, i) => {
+      const role = DEFENDER_ROLES[i] ?? DEFENDER_ROLES[0]!;
+      const ai = stepDefender(d, role, ball, i === chaser);
+      return clampToPitch(stepMovement(d, ai, defenderParams.current, dt), PITCH.halfLength, PITCH.halfWidth);
+    });
+
+    // Defenders shove the ball too, so a challenge actually wins possession.
+    for (const d of defenders) {
+      ball = resolvePlayerBall(ball, d, PLAYER_RADIUS, dt);
+    }
+
+    useGameStore.setState({
+      player,
+      ball,
+      charge,
+      strikeCooldown: cooldown,
+      keeper,
+      keeperState,
+      defenders,
+    });
 
     // --- meshes ---
     if (playerRef.current) {
       playerRef.current.position.set(player.position.x, 0, player.position.z);
       playerRef.current.rotation.y = player.heading;
     }
+    if (keeperRef.current) {
+      keeperRef.current.position.set(keeper.position.x, 0, keeper.position.z);
+      keeperRef.current.rotation.y = keeper.heading;
+      // Tip the body over during a dive — cheap but reads instantly.
+      keeperRef.current.rotation.x =
+        keeperState.phase === "diving" ? keeperState.diveDir * 0.95 : 0;
+    }
+    defenders.forEach((d, i) => {
+      const ref = defenderRefs.current[i];
+      if (!ref) return;
+      ref.position.set(d.position.x, 0, d.position.z);
+      ref.rotation.y = d.heading;
+    });
     if (ballRef.current) {
       ballRef.current.position.set(ball.position.x, ball.position.y, ball.position.z);
       const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
@@ -105,6 +179,17 @@ export function MatchScene() {
       <Goal x={-PITCH_LENGTH / 2} side={-1} />
       <Goal x={PITCH_LENGTH / 2} side={1} />
       <Player ref={playerRef} />
+      <Player ref={keeperRef} color="#f7c948" accent="#1d2b3a" />
+      {DEFENDER_ROLES.map((role, i) => (
+        <Player
+          key={role.id}
+          ref={(el) => {
+            defenderRefs.current[i] = el;
+          }}
+          color="#2f6fd0"
+          accent="#eef4ff"
+        />
+      ))}
       <Ball ref={ballRef} />
     </>
   );
