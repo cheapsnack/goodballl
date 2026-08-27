@@ -50,7 +50,7 @@ export function BallTrail() {
       positions[i] = ball.position.x;
       positions[i + 1] = ball.position.y;
       positions[i + 2] = ball.position.z;
-      line.geometry.attributes.position!.needsUpdate = true;
+      line.geometry.attributes['position']!.needsUpdate = true;
     }
 
     const material = line.material as THREE.LineBasicMaterial;

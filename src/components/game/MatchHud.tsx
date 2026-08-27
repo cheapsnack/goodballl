@@ -6,7 +6,7 @@ const TEAMS = {
   away: { short: "AI", color: "#2f6fd0" },
 } as const;
 
-export function MatchHud({ onExit }: { onExit?: () => void }) {
+export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
   const resetMatch = useGameStore((s) => s.resetMatch);
   const score = useGameStore((s) => s.score);
   const matchTime = useGameStore((s) => s.matchTime);

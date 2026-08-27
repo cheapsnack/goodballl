@@ -9,7 +9,7 @@ import { SoundToggle } from "./SoundToggle";
 
 const SKY = "#8fc3e8";
 
-export function GameCanvas({ onExit }: { onExit?: () => void }) {
+export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
   return (
     <div className="fixed inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 26, 30], fov: 45, far: 600 }}>
