@@ -54,33 +54,38 @@ export type StrikeResult = {
 /**
  * Turns a released charge into an impulse.
  *
- * `target` is the assist seam for step 2 (nearest teammate). While it is
- * undefined the direction is purely the player's heading, so behaviour today
- * is unchanged and teammates plug in later without touching this call site.
+ * `target` is the assist seam: the nearest teammate for a pass, or the goal
+ * centre for a shot. Passes are pulled toward it fairly strongly; shots only
+ * get a light on-target nudge inside a tighter cone, so aiming still belongs
+ * to the player.
  */
 export function resolveStrike(
   player: Kinematics,
   charge: ChargeState,
   target?: { x: number; z: number },
 ): StrikeResult {
-  const cfg = charge.action === "pass" ? STRIKE_TUNING.pass : STRIKE_TUNING.shot;
+  const isPass = charge.action === "pass";
+  const cfg = isPass ? STRIKE_TUNING.pass : STRIKE_TUNING.shot;
 
   // Facing direction on the ground plane.
   let dx = Math.sin(player.heading);
   let dz = -Math.cos(player.heading);
 
-  // Pass assist: blend toward the target when one is supplied and roughly ahead.
-  if (target && charge.action === "pass") {
+  if (target) {
+    const weight = isPass ? STRIKE_TUNING.assistWeight : STRIKE_TUNING.shotAssistWeight;
+    const minAlignment = isPass
+      ? STRIKE_TUNING.assistMinAlignment
+      : STRIKE_TUNING.shotAssistMinAlignment;
+
     const tx = target.x - player.position.x;
     const tz = target.z - player.position.z;
     const len = Math.hypot(tx, tz);
     if (len > 1e-3) {
       const nx = tx / len;
       const nz = tz / len;
-      if (dx * nx + dz * nz >= STRIKE_TUNING.assistMinAlignment) {
-        const w = STRIKE_TUNING.assistWeight;
-        dx += (nx - dx) * w;
-        dz += (nz - dz) * w;
+      if (dx * nx + dz * nz >= minAlignment) {
+        dx += (nx - dx) * weight;
+        dz += (nz - dz) * weight;
       }
     }
   }
@@ -92,13 +97,9 @@ export function resolveStrike(
   // Momentum: running into the strike adds power, running away takes some off.
   const forward = player.velocity.x * dx + player.velocity.z * dz;
   const base = cfg.minSpeed + (cfg.maxSpeed - cfg.minSpeed) * charge.power;
-  const speed = Math.max(
-    cfg.minSpeed * 0.5,
-    base + forward * STRIKE_TUNING.momentumTransfer,
-  );
+  const speed = Math.max(cfg.minSpeed * 0.5, base + forward * STRIKE_TUNING.momentumTransfer);
 
   const loftRatio = charge.loft ? cfg.loftRatio : cfg.baseLoftRatio;
 
   return { direction: { x: dx, z: dz }, speed, lift: speed * loftRatio };
 }
-
