@@ -29,12 +29,8 @@ import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
 import { detectGoal, isPlayFrozen, MATCH_TUNING } from "../../game/logic/match";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
+import { getClub, playerAt, playersAt } from "../../game/data/clubs";
 import type { Kinematics, MovementInput } from "../../game/types";
-
-// Placeholder attributes until club data is wired in (Phase 9).
-const CONTROLLED_ATTRS = { pace: 74, dribble: 72 };
-const KEEPER_ATTRS = { pace: 66, dribble: 60 };
-const DEFENDER_ATTRS = { pace: 70, dribble: 64 };
 
 export function MatchScene() {
   const input = useKeyboardInput();
@@ -45,9 +41,20 @@ export function MatchScene() {
   const keeperRef = useRef<THREE.Group>(null);
   const defenderRefs = useRef<(THREE.Group | null)[]>([]);
 
-  const params = useRef(paramsFromAttributes(CONTROLLED_ATTRS));
-  const keeperParams = useRef(paramsFromAttributes(KEEPER_ATTRS));
-  const defenderParams = useRef(paramsFromAttributes(DEFENDER_ATTRS));
+  // Clubs are chosen on the menu before this component ever mounts, so a
+  // one-time read here (not a subscription) is enough to pull rosters/kits.
+  const { homeClubId, awayClubId } = useGameStore.getState();
+  const homeClub = getClub(homeClubId);
+  const awayClub = getClub(awayClubId);
+  const controlledPlayer = playerAt(homeClub, "FWD");
+  const keeperPlayer = playerAt(awayClub, "GK");
+  const defenderPlayers = playersAt(awayClub, "DEF", DEFENDER_ROLES.length);
+
+  const params = useRef(paramsFromAttributes(controlledPlayer.attributes));
+  const keeperParams = useRef(paramsFromAttributes(keeperPlayer.attributes));
+  const defenderParams = useRef(
+    defenderPlayers.map((p) => paramsFromAttributes(p.attributes)),
+  );
   const camFrame = useRef<CameraFrame>({
     position: { x: 0, y: 26, z: 30 },
     lookAt: { x: 0, y: 0, z: 0 },
@@ -210,7 +217,8 @@ export function MatchScene() {
     const defenders = store.defenders.map((d, i) => {
       const role = DEFENDER_ROLES[i] ?? DEFENDER_ROLES[0]!;
       const ai = stepDefender(d, role, ball, i === chaser);
-      return clampToPitch(stepMovement(d, ai, defenderParams.current, dt), PITCH.halfLength, PITCH.halfWidth);
+      const dParams = defenderParams.current[i] ?? defenderParams.current[0]!;
+      return clampToPitch(stepMovement(d, ai, dParams, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
     // Defenders shove the ball too, so a challenge actually wins possession.
@@ -265,7 +273,8 @@ export function MatchScene() {
       <Pitch />
       <Goal x={-PITCH_LENGTH / 2} side={-1} />
       <Goal x={PITCH_LENGTH / 2} side={1} />
-      <Player ref={playerRef} />
+      <Player ref={playerRef} color={homeClub.primaryColor} accent={homeClub.secondaryColor} />
+      {/* Goalkeepers traditionally clash with the outfield kit regardless of club. */}
       <Player ref={keeperRef} color="#f7c948" accent="#1d2b3a" />
       {DEFENDER_ROLES.map((role, i) => (
         <Player
@@ -273,8 +282,8 @@ export function MatchScene() {
           ref={(el) => {
             defenderRefs.current[i] = el;
           }}
-          color="#2f6fd0"
-          accent="#eef4ff"
+          color={awayClub.primaryColor}
+          accent={awayClub.secondaryColor}
         />
       ))}
       <Ball ref={ballRef} />

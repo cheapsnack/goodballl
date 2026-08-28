@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { initAudio, isAudioEnabled, setAudioEnabled } from "../../game/logic/audio";
 import { MATCH_TUNING } from "../../game/logic/match";
+import { CLUBS, DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID } from "../../game/data/clubs";
+import { useGameStore } from "../../game/store/useGameStore";
 
 /**
  * Pre-match screen. Rendered instead of the Canvas so nothing simulates (and
@@ -9,26 +11,30 @@ import { MATCH_TUNING } from "../../game/logic/match";
  */
 export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
   const [sound, setSound] = useState(isAudioEnabled());
+  const [homeId, setHomeId] = useState(DEFAULT_HOME_CLUB_ID);
+  const [awayId, setAwayId] = useState(DEFAULT_AWAY_CLUB_ID);
+  const setClubs = useGameStore((s) => s.setClubs);
 
   const start = () => {
     if (sound) initAudio();
     setAudioEnabled(sound);
+    setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
     onKickoff();
   };
 
   const minutes = Math.round((MATCH_TUNING.periodSeconds * MATCH_TUNING.periods) / 60);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-[#0d1a12] text-background">
+    <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-[#0d1a12] text-background">
       {/* Faint pitch stripes behind the panel keep the sports feel pre-kickoff. */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.18]"
+        className="pointer-events-none fixed inset-0 opacity-[0.18]"
         style={{
           backgroundImage:
             "repeating-linear-gradient(90deg, #2f7a3f 0 60px, #256533 60px 120px)",
         }}
       />
-      <div className="relative w-full max-w-md px-8 text-center">
+      <div className="relative w-full max-w-md px-8 py-10 text-center">
         <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
           Kickoff Mode
         </div>
@@ -41,6 +47,9 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           {MATCH_TUNING.periods} halves · {minutes} minutes · you attack the far goal against a
           keeper and two defenders.
         </p>
+
+        <ClubPicker label="Your Club" selectedId={homeId} onSelect={setHomeId} />
+        <ClubPicker label="Opponent" selectedId={awayId} onSelect={setAwayId} />
 
         <button
           onClick={start}
@@ -68,6 +77,46 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <span>Ctrl</span>
           <span>Loft</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ClubPicker({
+  label,
+  selectedId,
+  onSelect,
+}: {
+  label: string;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="mt-6 text-left">
+      <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-background/40">
+        {label}
+      </div>
+      <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+        {CLUBS.map((club) => {
+          const active = club.id === selectedId;
+          return (
+            <button
+              key={club.id}
+              onClick={() => onSelect(club.id)}
+              className={`flex shrink-0 items-center gap-2 rounded-md border px-3 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
+                active
+                  ? "border-[#63d68a] bg-[#63d68a]/15 text-background"
+                  : "border-background/15 text-background/50 hover:border-background/30"
+              }`}
+            >
+              <span
+                className="h-3 w-3 rounded-full border border-background/30"
+                style={{ backgroundColor: club.primaryColor }}
+              />
+              {club.shortName}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
