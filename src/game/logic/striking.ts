@@ -54,36 +54,39 @@ export type StrikeResult = {
 /**
  * Turns a released charge into an impulse.
  *
- * `target` is the assist seam: the nearest teammate for a pass, or the goal
- * centre for a shot. Passes are pulled toward it fairly strongly; shots only
- * get a light on-target nudge inside a tighter cone, so aiming still belongs
- * to the player.
+ * `target` is a pass-assist seam (nearest teammate) or, for shots, the goal
+ * centre — while it is undefined the direction is purely the player's
+ * heading, so callers that don't pass one get unassisted behaviour.
  */
 export function resolveStrike(
   player: Kinematics,
   charge: ChargeState,
   target?: { x: number; z: number },
 ): StrikeResult {
-  const isPass = charge.action === "pass";
-  const cfg = isPass ? STRIKE_TUNING.pass : STRIKE_TUNING.shot;
+  const cfg = charge.action === "pass" ? STRIKE_TUNING.pass : STRIKE_TUNING.shot;
 
   // Facing direction on the ground plane.
   let dx = Math.sin(player.heading);
   let dz = -Math.cos(player.heading);
 
+  // Assist: blend toward the target when one is supplied and roughly ahead.
+  // Passing gets a strong, generous cone; shooting gets a light nudge only
+  // when you're already close to on-target, so it steadies aim without
+  // aiming the shot for you.
   if (target) {
-    const weight = isPass ? STRIKE_TUNING.assistWeight : STRIKE_TUNING.shotAssistWeight;
-    const minAlignment = isPass
-      ? STRIKE_TUNING.assistMinAlignment
-      : STRIKE_TUNING.shotAssistMinAlignment;
-
     const tx = target.x - player.position.x;
     const tz = target.z - player.position.z;
     const len = Math.hypot(tx, tz);
     if (len > 1e-3) {
       const nx = tx / len;
       const nz = tz / len;
-      if (dx * nx + dz * nz >= minAlignment) {
+      const alignment = dx * nx + dz * nz;
+      const isPass = charge.action === "pass";
+      const minAlignment = isPass
+        ? STRIKE_TUNING.assistMinAlignment
+        : STRIKE_TUNING.shotAssistMinAlignment;
+      const weight = isPass ? STRIKE_TUNING.assistWeight : STRIKE_TUNING.shotAssistWeight;
+      if (alignment >= minAlignment) {
         dx += (nx - dx) * weight;
         dz += (nz - dz) * weight;
       }
@@ -97,9 +100,13 @@ export function resolveStrike(
   // Momentum: running into the strike adds power, running away takes some off.
   const forward = player.velocity.x * dx + player.velocity.z * dz;
   const base = cfg.minSpeed + (cfg.maxSpeed - cfg.minSpeed) * charge.power;
-  const speed = Math.max(cfg.minSpeed * 0.5, base + forward * STRIKE_TUNING.momentumTransfer);
+  const speed = Math.max(
+    cfg.minSpeed * 0.5,
+    base + forward * STRIKE_TUNING.momentumTransfer,
+  );
 
   const loftRatio = charge.loft ? cfg.loftRatio : cfg.baseLoftRatio;
 
   return { direction: { x: dx, z: dz }, speed, lift: speed * loftRatio };
 }
+
