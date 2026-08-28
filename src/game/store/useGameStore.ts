@@ -166,3 +166,5 @@ export const useGameStore = create<GameState>((set) => ({
       restart: null,
     }),
 }));
+
+if (typeof window !== "undefined") (window as any).__gs = useGameStore;
