@@ -1,62 +1,71 @@
 import type { BallState } from "../types";
 import { BALL_RADIUS } from "./ballPhysics";
-import { cornerSpot, FIELD, goalKickSpot, goalLineX, throwInSpot } from "./field";
-import type { TeamSide } from "./match";
+import { FIELD, cornerSpot, goalKickSpot, throwInSpot } from "./field";
+import { scorerForGoalLine, type TeamSide } from "./match";
 
-export type RestartType = "throw-in" | "corner" | "goal-kick";
+export type RestartType = "throwin" | "corner" | "goalkick";
 
-export type RestartAward = {
+export type Restart = {
   type: RestartType;
-  /** where the ball is placed */
-  position: { x: number; z: number };
-  /** which team gets the restart */
+  /** the team taking the restart */
   team: TeamSide;
+  position: { x: number; z: number };
 };
 
-const other = (team: TeamSide): TeamSide => (team === "home" ? "away" : "home");
-
-/** Which team attacks the goal on a given side (home attacks +x). */
-const attackerOfGoal = (side: 1 | -1): TeamSide => (side === 1 ? "home" : "away");
-
 /**
- * Detects the ball leaving the field of play across one frame and returns the
- * restart it produces. Returns null while the ball is in play.
- *
- * Call this *after* goal detection — a ball in the net is not out of play.
+ * Detects the ball leaving the pitch across one frame (not through a goal —
+ * call this only after detectGoal() has returned null for the same frame).
+ * `lastTouch` is whichever team's player most recently made contact with the
+ * ball, used to award the restart to the correct side. Pure.
  */
 export function detectOutOfBounds(
   prev: BallState,
   next: BallState,
   lastTouch: TeamSide,
-): RestartAward | null {
-  // --- touchlines (z) -> throw-in to the team that didn't touch it last ---
-  const zLine = FIELD.halfWidth + BALL_RADIUS;
-  if (Math.abs(next.position.z) > zLine && Math.abs(prev.position.z) <= zLine) {
-    const zSide: 1 | -1 = next.position.z > 0 ? 1 : -1;
-    const t = (zSide * zLine - prev.position.z) / (next.position.z - prev.position.z || 1);
-    const x = prev.position.x + (next.position.x - prev.position.x) * t;
-    return { type: "throw-in", position: throwInSpot(x, zSide), team: other(lastTouch) };
-  }
+): Restart | null {
+  const { halfLength, halfWidth } = FIELD;
+  // Matches detectGoal()'s threshold exactly (whole ball fully past the
+  // line) so the two checks agree on which frame the ball actually left —
+  // detectGoal must run first each frame; this only fires when it said no.
+  const lineWithBall = halfLength + BALL_RADIUS;
 
-  // --- goal lines (x) -> corner or goal kick ---
+  // Goal line (either end) — missed/over the frame, not a goal.
   for (const side of [1, -1] as const) {
-    const line = goalLineX(side) * side + BALL_RADIUS;
     const before = prev.position.x * side;
     const after = next.position.x * side;
-    if (before >= line || after < line) continue;
+    if (before < lineWithBall && after >= lineWithBall) {
+      const attacker = scorerForGoalLine(side);
+      const defender: TeamSide = attacker === "home" ? "away" : "home";
+      const zSign: 1 | -1 = next.position.z >= 0 ? 1 : -1;
 
-    const t = (line - before) / (after - before || 1);
-    const z = prev.position.z + (next.position.z - prev.position.z) * t;
-    const zSign: 1 | -1 = z >= 0 ? 1 : -1;
-
-    const attacker = attackerOfGoal(side);
-    if (lastTouch === attacker) {
-      // Attacker put it behind: goal kick to the defending side.
-      return { type: "goal-kick", position: goalKickSpot(side, zSign), team: other(attacker) };
+      // Off the defender (or last touched by nobody meaningful) → corner.
+      // Off the attacker (shot/cross that drifted wide or over) → goal kick.
+      if (lastTouch === defender) {
+        return { type: "corner", team: attacker, position: cornerSpot(side, zSign) };
+      }
+      return { type: "goalkick", team: defender, position: goalKickSpot(side, zSign) };
     }
-    // Defender put it behind their own line: corner to the attackers.
-    return { type: "corner", position: cornerSpot(side, zSign), team: attacker };
+  }
+
+  // Touchline (either side) — out once the whole ball has crossed it.
+  const lineWithBallZ = halfWidth + BALL_RADIUS;
+  if (Math.abs(next.position.z) >= lineWithBallZ && Math.abs(prev.position.z) < lineWithBallZ) {
+    const zSide: 1 | -1 = next.position.z >= 0 ? 1 : -1;
+    // Whoever didn't touch it last throws it in.
+    const receivingTeam: TeamSide = lastTouch === "home" ? "away" : "home";
+    return {
+      type: "throwin",
+      team: receivingTeam,
+      position: throwInSpot(next.position.x, zSide),
+    };
   }
 
   return null;
+}
+
+/** Human-readable label for the HUD banner. */
+export function restartLabel(type: RestartType): string {
+  if (type === "throwin") return "Throw-in";
+  if (type === "corner") return "Corner";
+  return "Goal Kick";
 }
