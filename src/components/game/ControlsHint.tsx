@@ -19,6 +19,8 @@ export function ControlsHint() {
       <span className="ml-2 opacity-60">(hold to charge)</span>
       <Sep />
       <Key>C</Key> camera
+      <Sep />
+      <Key>Q</Key> switch player
     </div>
   );
 }

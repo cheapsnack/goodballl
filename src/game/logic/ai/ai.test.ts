@@ -12,12 +12,12 @@ import {
   type KeeperState,
 } from "./goalkeeper";
 import {
-  DEFENDER_TUNING,
-  nearestDefenderIndex,
-  stepDefender,
+  nearestChaserIndex,
+  OUTFIELD_TUNING,
+  stepOutfield,
   zonalAnchor,
-  type DefenderRole,
-} from "./defender";
+  type OutfieldRole,
+} from "./outfield";
 
 const SIDE = 1 as const;
 
@@ -192,34 +192,34 @@ describe("keeper saves", () => {
   });
 });
 
-describe("defenders", () => {
-  const roles: [DefenderRole, DefenderRole] = [
-    { id: "l", side: SIDE, laneZ: -8.5 },
-    { id: "r", side: SIDE, laneZ: 8.5 },
+describe("outfield AI", () => {
+  const roles: [OutfieldRole, OutfieldRole] = [
+    { id: "l", defendSide: SIDE, slot: { position: "DEF", depth: 20, z: -8.5 } },
+    { id: "r", defendSide: SIDE, slot: { position: "DEF", depth: 20, z: 8.5 } },
   ];
 
-  it("picks the closest defender as the chaser", () => {
+  it("picks the closest player as the chaser", () => {
     const ds = [body(20, -12), body(20, 10)];
-    expect(nearestDefenderIndex(ds, ballAt(20, 9))).toBe(1);
-    expect(nearestDefenderIndex(ds, ballAt(20, -13))).toBe(0);
+    expect(nearestChaserIndex(ds, ballAt(20, 9))).toBe(1);
+    expect(nearestChaserIndex(ds, ballAt(20, -13))).toBe(0);
   });
 
   it("chaser steers toward the ball", () => {
-    const input = stepDefender(body(20, 0), roles[0], ballAt(30, 6), true);
+    const input = stepOutfield(body(20, 0), roles[0], ballAt(30, 6), true);
     expect(input.x).toBeGreaterThan(0);
     expect(input.z).toBeGreaterThan(0);
     expect(input.sprint).toBe(true);
   });
 
   it("chaser leads a moving ball rather than aiming at it", () => {
-    const still = stepDefender(body(20, 0), roles[0], ballAt(30, 0), true);
-    const moving = stepDefender(body(20, 0), roles[0], ballAt(30, 0, 0, 20), true);
+    const still = stepOutfield(body(20, 0), roles[0], ballAt(30, 0), true);
+    const moving = stepOutfield(body(20, 0), roles[0], ballAt(30, 0, 0, 20), true);
     expect(still.z).toBeCloseTo(0, 5);
     expect(moving.z).toBeGreaterThan(0);
   });
 
   it("holds position when already on the ball", () => {
-    const input = stepDefender(body(20, 0), roles[0], ballAt(20.1, 0), true);
+    const input = stepOutfield(body(20, 0), roles[0], ballAt(20.1, 0), true);
     expect(input.x).toBe(0);
     expect(input.z).toBe(0);
   });
@@ -227,7 +227,7 @@ describe("defenders", () => {
   it("zonal anchor stays goal-side of the ball", () => {
     const anchor = zonalAnchor(roles[0], ballAt(10, 0));
     expect(anchor.x).toBeGreaterThan(10);
-    expect(anchor.x).toBeLessThanOrEqual(DEFENDER_TUNING.maxDepth);
+    expect(anchor.x).toBeLessThanOrEqual(FIELD.halfLength - 2);
   });
 
   it("zonal anchor shifts with the ball but keeps its lane", () => {
@@ -239,8 +239,8 @@ describe("defenders", () => {
   });
 
   it("non-chaser drifts to its zone, not the ball", () => {
-    const input = stepDefender(body(20, 8.5), roles[1], ballAt(-30, 0), false);
-    // Ball is far behind; the zonal defender should not sprint at it.
+    const input = stepOutfield(body(20, 8.5), roles[1], ballAt(-30, 0), false);
+    // Ball is far behind; the zonal player should not sprint at it.
     expect(input.x).toBeLessThanOrEqual(0.01);
   });
 
@@ -248,10 +248,14 @@ describe("defenders", () => {
     const cases = [ballAt(0, 0), ballAt(50, 30, 20, -10), ballAt(-50, -30, -8, 4)];
     for (const b of cases) {
       for (const chaser of [true, false]) {
-        const i = stepDefender(body(5, 5), roles[0], b, chaser);
+        const i = stepOutfield(body(5, 5), roles[0], b, chaser);
         expect(Math.hypot(i.x, i.z)).toBeLessThanOrEqual(1.0001);
       }
     }
+  });
+
+  it("has a chaser switch margin so near-equidistant players don't flicker", () => {
+    expect(OUTFIELD_TUNING.chaserSwitchMargin).toBeGreaterThan(0);
   });
 });
 

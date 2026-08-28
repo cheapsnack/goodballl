@@ -5,9 +5,9 @@ import { IDLE_CHARGE } from "../logic/striking";
 import type { CameraMode } from "../logic/camera";
 import { FIELD } from "../logic/field";
 import { initialKeeperState, keeperHome, type KeeperState } from "../logic/ai/goalkeeper";
-import type { DefenderRole } from "../logic/ai/defender";
+import { buildOutfield } from "../logic/ai/outfield";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
-import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID } from "../data/clubs";
+import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
 
 export const PITCH = {
@@ -19,13 +19,11 @@ export const PITCH = {
 
 export const PLAYER_RADIUS = 0.55;
 
-/** The human attacks the +x goal, so the AI defends that side. */
-export const DEFENDING_SIDE = 1 as const;
-
-export const DEFENDER_ROLES: DefenderRole[] = [
-  { id: "def-left", side: DEFENDING_SIDE, laneZ: -8.5 },
-  { id: "def-right", side: DEFENDING_SIDE, laneZ: 8.5 },
-];
+/** Which goal each side defends. Home attacks +x, away attacks -x. */
+export const HOME_DEFEND_SIDE = -1 as const;
+export const AWAY_DEFEND_SIDE = 1 as const;
+/** Kept for anything that still refers to the old single-opponent naming. */
+export const DEFENDING_SIDE = AWAY_DEFEND_SIDE;
 
 const body = (x: number, z: number, heading = 0): Kinematics => ({
   position: { x, y: 0, z },
@@ -33,16 +31,11 @@ const body = (x: number, z: number, heading = 0): Kinematics => ({
   heading,
 });
 
-const initialPlayer = (): Kinematics => body(-3, 4);
-
-const initialKeeper = (): Kinematics => {
-  const home = keeperHome(DEFENDING_SIDE);
+const initialGK = (side: 1 | -1): Kinematics => {
+  const home = keeperHome(side);
   // Faces back down the pitch, toward the incoming play.
-  return body(home.x, home.z, -Math.PI / 2);
+  return body(home.x, home.z, side === 1 ? -Math.PI / 2 : Math.PI / 2);
 };
-
-const initialDefenders = (): Kinematics[] =>
-  DEFENDER_ROLES.map((r) => body(DEFENDING_SIDE * 18, r.laneZ, -Math.PI / 2));
 
 const initialBall = (): BallState => ({
   position: { x: 0, y: BALL_RADIUS, z: 0 },
@@ -57,15 +50,21 @@ type GameState = {
    * them with `useGameStore.getState()` inside the loop rather than
    * subscribing — subscribing would re-render React 60x a second.
    */
-  player: Kinematics;
   ball: BallState;
   input: MovementInput;
   cameraMode: CameraMode;
 
-  /** AI opponents. */
-  keeper: Kinematics;
-  keeperState: KeeperState;
-  defenders: Kinematics[];
+  /** Home side: 10 outfield players (formation order: DEF, MID, FWD) + GK. */
+  homeOutfield: Kinematics[];
+  homeGK: Kinematics;
+  homeGKState: KeeperState;
+  /** Index into homeOutfield the human currently controls. */
+  controlledIndex: number;
+
+  /** Away side: fully AI-controlled. */
+  awayOutfield: Kinematics[];
+  awayGK: Kinematics;
+  awayGKState: KeeperState;
 
   /**
    * Strike state. `charge` keeps a stable reference while idle so the power
@@ -95,10 +94,9 @@ type GameState = {
   homeClubId: string;
   awayClubId: string;
 
-  setPlayer: (p: Kinematics) => void;
-  setBall: (b: BallState) => void;
   setInput: (i: MovementInput) => void;
   setCameraMode: (m: CameraMode) => void;
+  setControlledIndex: (i: number) => void;
 
   setMatchStatus: (status: MatchStatus, statusTimer?: number) => void;
   setMatchTime: (matchTime: number) => void;
@@ -110,19 +108,33 @@ type GameState = {
   resetMatch: () => void;
 };
 
-const kickoffBodies = () => ({
-  player: initialPlayer(),
-  ball: initialBall(),
-  keeper: initialKeeper(),
-  keeperState: initialKeeperState(),
-  defenders: initialDefenders(),
-  charge: IDLE_CHARGE,
-  strikeCooldown: 0,
-  restart: null,
-});
+/** Builds fresh kickoff bodies for both full XIs, given the two clubs playing. */
+const kickoffBodies = (homeClubId: string, awayClubId: string) => {
+  const homeClub = getClub(homeClubId);
+  const awayClub = getClub(awayClubId);
 
-export const useGameStore = create<GameState>((set) => ({
-  ...kickoffBodies(),
+  const homeXI = buildOutfield(homeClub, HOME_DEFEND_SIDE);
+  const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE);
+
+  const defaultControlled = homeXI.findIndex((e) => e.role.slot.position === "FWD");
+
+  return {
+    ball: initialBall(),
+    homeOutfield: homeXI.map((e) => e.body),
+    homeGK: initialGK(HOME_DEFEND_SIDE),
+    homeGKState: initialKeeperState(),
+    controlledIndex: defaultControlled >= 0 ? defaultControlled : 0,
+    awayOutfield: awayXI.map((e) => e.body),
+    awayGK: initialGK(AWAY_DEFEND_SIDE),
+    awayGKState: initialKeeperState(),
+    charge: IDLE_CHARGE,
+    strikeCooldown: 0,
+    restart: null,
+  };
+};
+
+export const useGameStore = create<GameState>((set, get) => ({
+  ...kickoffBodies(DEFAULT_HOME_CLUB_ID, DEFAULT_AWAY_CLUB_ID),
   input: { x: 0, z: 0, sprint: false },
   cameraMode: "broadcast",
 
@@ -133,15 +145,13 @@ export const useGameStore = create<GameState>((set) => ({
   statusTimer: MATCH_TUNING.kickoffPause,
   lastScorer: null,
   lastTouch: "home",
-  restart: null,
 
   homeClubId: DEFAULT_HOME_CLUB_ID,
   awayClubId: DEFAULT_AWAY_CLUB_ID,
 
-  setPlayer: (player) => set({ player }),
-  setBall: (ball) => set({ ball }),
   setInput: (input) => set({ input }),
   setCameraMode: (cameraMode) => set({ cameraMode }),
+  setControlledIndex: (controlledIndex) => set({ controlledIndex }),
 
   setMatchStatus: (matchStatus, statusTimer = 0) => set({ matchStatus, statusTimer }),
   setMatchTime: (matchTime) => set({ matchTime }),
@@ -153,10 +163,10 @@ export const useGameStore = create<GameState>((set) => ({
       lastScorer: scorer,
     })),
   setClubs: (homeClubId, awayClubId) => set({ homeClubId, awayClubId }),
-  resetPositions: () => set(kickoffBodies()),
+  resetPositions: () => set(kickoffBodies(get().homeClubId, get().awayClubId)),
   resetMatch: () =>
     set({
-      ...kickoffBodies(),
+      ...kickoffBodies(get().homeClubId, get().awayClubId),
       score: { home: 0, away: 0 },
       matchTime: 0,
       period: 1,
