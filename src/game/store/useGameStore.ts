@@ -7,6 +7,7 @@ import { FIELD } from "../logic/field";
 import { initialKeeperState, keeperHome, type KeeperState } from "../logic/ai/goalkeeper";
 import type { DefenderRole } from "../logic/ai/defender";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
+import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID } from "../data/clubs";
 
 export const PITCH = {
   length: FIELD.length,
@@ -80,10 +81,14 @@ type GameState = {
   /** 1-based period index */
   period: number;
   matchStatus: MatchStatus;
-  /** seconds remaining in the current non-playing status */
+  /** seconds remaining before the current non-playing status */
   statusTimer: number;
   /** who scored the goal currently being celebrated */
   lastScorer: TeamSide | null;
+
+  /** --- club selection, set from the menu before kickoff --- */
+  homeClubId: string;
+  awayClubId: string;
 
   setPlayer: (p: Kinematics) => void;
   setBall: (b: BallState) => void;
@@ -93,6 +98,8 @@ type GameState = {
   setMatchStatus: (status: MatchStatus, statusTimer?: number) => void;
   setMatchTime: (matchTime: number) => void;
   recordGoal: (scorer: TeamSide) => void;
+  /** Sets which clubs are playing. Call before kickoff, from the menu. */
+  setClubs: (homeClubId: string, awayClubId: string) => void;
   /** Puts bodies back to kickoff shape without touching score or clock. */
   resetPositions: () => void;
   resetMatch: () => void;
@@ -120,6 +127,9 @@ export const useGameStore = create<GameState>((set) => ({
   statusTimer: MATCH_TUNING.kickoffPause,
   lastScorer: null,
 
+  homeClubId: DEFAULT_HOME_CLUB_ID,
+  awayClubId: DEFAULT_AWAY_CLUB_ID,
+
   setPlayer: (player) => set({ player }),
   setBall: (ball) => set({ ball }),
   setInput: (input) => set({ input }),
@@ -134,6 +144,7 @@ export const useGameStore = create<GameState>((set) => ({
       statusTimer: MATCH_TUNING.goalCelebration,
       lastScorer: scorer,
     })),
+  setClubs: (homeClubId, awayClubId) => set({ homeClubId, awayClubId }),
   resetPositions: () => set(kickoffBodies()),
   resetMatch: () =>
     set({
@@ -146,4 +157,3 @@ export const useGameStore = create<GameState>((set) => ({
       lastScorer: null,
     }),
 }));
-
