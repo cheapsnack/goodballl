@@ -17,6 +17,8 @@ export function ControlsHint() {
       <Sep />
       <Key>Ctrl</Key> loft
       <span className="ml-2 opacity-60">(hold to charge)</span>
+      <Sep />
+      <Key>C</Key> camera
     </div>
   );
 }

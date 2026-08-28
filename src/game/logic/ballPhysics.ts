@@ -46,6 +46,13 @@ export const STRIKE_TUNING = {
   assistWeight: 0.55,
   /** target must be at least this aligned with facing to attract the pass */
   assistMinAlignment: 0.35,
+  /**
+   * Shot assist: much lighter than pass assist — nudges a shot toward goal
+   * when you're already roughly facing it, so near-miss aim doesn't feel
+   * unresponsive, but it never aims for you outside that cone.
+   */
+  shotAssistWeight: 0.22,
+  shotAssistMinAlignment: 0.55,
 
   shot: {
     minSpeed: 13,
@@ -135,16 +142,19 @@ export function stepBall(ball: BallState, dt: number, opts: BallStepOptions): Ba
   x += vx * dt;
   z += vz * dt;
 
-  // Simple boundary: bounce off the run-off edge so the ball never escapes.
-  const bx = opts.halfLength + 6;
-  const bz = opts.halfWidth + 6;
-  if (Math.abs(x) > bx) {
-    x = Math.sign(x) * bx;
-    vx = -vx * 0.55;
+  // The ball is allowed to leave the true pitch bounds — that's what makes a
+  // throw-in/corner/goal-kick (see restarts.ts) rather than an invisible
+  // wall. This is only a hard safety net far past the run-off so a wild
+  // deflection can't send it to infinity before the restart logic catches it.
+  const safetyX = opts.halfLength + 18;
+  const safetyZ = opts.halfWidth + 18;
+  if (Math.abs(x) > safetyX) {
+    x = Math.sign(x) * safetyX;
+    vx = 0;
   }
-  if (Math.abs(z) > bz) {
-    z = Math.sign(z) * bz;
-    vz = -vz * 0.55;
+  if (Math.abs(z) > safetyZ) {
+    z = Math.sign(z) * safetyZ;
+    vz = 0;
   }
 
   const speed = Math.hypot(vx, vz);

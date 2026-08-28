@@ -19,6 +19,13 @@ export const DEFENDER_TUNING = {
   zonalDeadZone: 1.4,
   /** never drop deeper than this from their own goal line */
   maxDepth: FIELD.halfLength - 3,
+  /**
+   * A challenger must be closer than the current chaser by at least this
+   * many metres before the role switches. Without this, two defenders at
+   * near-equal distance flip the chaser role every frame as the ball moves
+   * a few centimetres, which reads as both of them twitching randomly.
+   */
+  chaserSwitchMargin: 1.6,
 } as const;
 
 export type DefenderRole = {
@@ -39,8 +46,16 @@ export function distanceToBall(body: Kinematics, ball: BallState): number {
 /**
  * Picks the index of the defender that should press the ball. Everyone else
  * holds their zone. Pure.
+ *
+ * Sticky: keeps the current chaser unless another defender is closer by more
+ * than `chaserSwitchMargin`. Pass `currentChaser: -1` on the very first call
+ * (no incumbent) to just take the closest.
  */
-export function nearestDefenderIndex(defenders: Kinematics[], ball: BallState): number {
+export function nearestDefenderIndex(
+  defenders: Kinematics[],
+  ball: BallState,
+  currentChaser = -1,
+): number {
   let best = -1;
   let bestDist = Infinity;
   defenders.forEach((d, i) => {
@@ -50,6 +65,14 @@ export function nearestDefenderIndex(defenders: Kinematics[], ball: BallState): 
       best = i;
     }
   });
+
+  if (currentChaser >= 0 && currentChaser < defenders.length && best !== currentChaser) {
+    const incumbentDist = distanceToBall(defenders[currentChaser]!, ball);
+    if (incumbentDist - bestDist < DEFENDER_TUNING.chaserSwitchMargin) {
+      return currentChaser;
+    }
+  }
+
   return best;
 }
 

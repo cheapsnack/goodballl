@@ -17,6 +17,17 @@ export const CAMERA_TUNING = {
     lookAhead: 0.35,
     fov: 45,
   },
+  run: {
+    /** height above the player */
+    height: 4.2,
+    /** distance behind the player, opposite their heading */
+    distance: 6.5,
+    /** how far above the player the camera looks */
+    lookHeight: 0.9,
+    /** exponential smoothing coefficient (higher = snappier) */
+    smooth: 6,
+    fov: 62,
+  },
 } as const;
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
@@ -59,6 +70,38 @@ export function stepBroadcastCamera(
       x: lerp(current.lookAt.x, focusX * 0.85, s),
       y: 0,
       z: lerp(current.lookAt.z, focusZ * 0.8, s),
+    },
+  };
+}
+
+/**
+ * Run camera: close behind-player chase cam. Much more precise for aiming
+ * shots/passes since the player fills more of the frame and the camera
+ * always faces the way they're facing — trades overview for control.
+ */
+export function stepRunCamera(
+  current: CameraFrame,
+  playerPos: Vec3,
+  heading: number,
+  dt: number,
+): CameraFrame {
+  const t = CAMERA_TUNING.run;
+  const s = smoothing(t.smooth, dt);
+
+  // Behind the player, opposite their facing direction.
+  const behindX = playerPos.x - Math.sin(heading) * t.distance;
+  const behindZ = playerPos.z + Math.cos(heading) * t.distance;
+
+  return {
+    position: {
+      x: lerp(current.position.x, behindX, s),
+      y: lerp(current.position.y, t.height, s),
+      z: lerp(current.position.z, behindZ, s),
+    },
+    lookAt: {
+      x: lerp(current.lookAt.x, playerPos.x + Math.sin(heading) * 4, s),
+      y: lerp(current.lookAt.y, t.lookHeight, s),
+      z: lerp(current.lookAt.z, playerPos.z - Math.cos(heading) * 4, s),
     },
   };
 }
