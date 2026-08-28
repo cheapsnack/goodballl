@@ -23,6 +23,14 @@ export const OUTFIELD_TUNING = {
    * both of them twitching randomly instead of one committing.
    */
   chaserSwitchMargin: 1.6,
+  /**
+   * No AI player's *target* is ever set closer than this to the true
+   * touchline/goal-line — they'll still contest a ball that's drifted into
+   * the run-off, but they aim to receive it just inside the line rather
+   * than sprinting flat-out through the corner after it. This is what stops
+   * the "defender chases the ball out and shoves it further out" loop.
+   */
+  safeMargin: 2.5,
 } as const;
 
 /** Depth (metres from *own* goal line) each line of a formation holds. */
@@ -35,6 +43,22 @@ export const FORMATION_DEPTH = {
 export type OutfieldSlot = { position: "DEF" | "MID" | "FWD"; depth: number; z: number };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Clamps a target point to a zone safely inside the true pitch boundary.
+ * Every AI movement target (chasing or zonal) goes through this, so no
+ * outfield player is ever *aiming* for the corner or the sideline itself —
+ * at worst they run up to the safe-zone edge and hold, letting the ball
+ * (and whoever is actually meant to take the restart) settle instead of
+ * repeatedly punching it back over the line on contact.
+ */
+function clampToSafeZone(x: number, z: number): { x: number; z: number } {
+  const m = OUTFIELD_TUNING.safeMargin;
+  return {
+    x: clamp(x, -FIELD.halfLength + m, FIELD.halfLength - m),
+    z: clamp(z, -FIELD.halfWidth + m, FIELD.halfWidth - m),
+  };
+}
 
 /** Evenly spreads `n` points across the pitch width, centred on 0. */
 function spreadZ(n: number, maxAbsZ = 27): number[] {
@@ -156,17 +180,9 @@ export function nearestToBallIndex(players: Kinematics[], ball: BallState): numb
 export function zonalAnchor(role: OutfieldRole, ball: BallState): { x: number; z: number } {
   const t = OUTFIELD_TUNING;
   const anchor = slotAnchor(role.slot, role.defendSide);
-  const x = clamp(
-    anchor.x + (ball.position.x - anchor.x) * t.zonalTrackX,
-    -FIELD.halfLength + 2,
-    FIELD.halfLength - 2,
-  );
-  const z = clamp(
-    anchor.z + (ball.position.z - anchor.z) * t.zonalTrackZ,
-    -FIELD.halfWidth + 2,
-    FIELD.halfWidth - 2,
-  );
-  return { x, z };
+  const x = anchor.x + (ball.position.x - anchor.x) * t.zonalTrackX;
+  const z = anchor.z + (ball.position.z - anchor.z) * t.zonalTrackZ;
+  return clampToSafeZone(x, z);
 }
 
 /** Steering toward an arbitrary point, shaped like human input. */
@@ -207,10 +223,10 @@ export function stepOutfield(
   const t = OUTFIELD_TUNING;
 
   if (isChaser) {
-    const target = {
-      x: ball.position.x + ball.velocity.x * t.interceptLead,
-      z: ball.position.z + ball.velocity.z * t.interceptLead,
-    };
+    const target = clampToSafeZone(
+      ball.position.x + ball.velocity.x * t.interceptLead,
+      ball.position.z + ball.velocity.z * t.interceptLead,
+    );
     return seek(self, target, { deadZone: t.pressDeadZone, sprintRange: t.sprintRange });
   }
 

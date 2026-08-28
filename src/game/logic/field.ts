@@ -42,10 +42,15 @@ export function goalKickSpot(side: 1 | -1, zSign: 1 | -1): { x: number; z: numbe
   };
 }
 
-/** Throw-in spot: on the touchline, at the z where the ball crossed it. */
+/**
+ * Throw-in spot: just inside the touchline, at the x where the ball crossed
+ * it. Inset well clear of the line itself — a spot right on the line plus
+ * the ball's own radius would already be back over the boundary, which is
+ * exactly what caused throw-ins to immediately go out again.
+ */
 export function throwInSpot(x: number, zSide: 1 | -1): { x: number; z: number } {
   return {
     x: Math.max(-FIELD.halfLength + 1, Math.min(FIELD.halfLength - 1, x)),
-    z: zSide * (FIELD.halfWidth - 0.3),
+    z: zSide * (FIELD.halfWidth - 1.8),
   };
 }
