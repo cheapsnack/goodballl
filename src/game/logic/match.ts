@@ -14,11 +14,19 @@ export const MATCH_TUNING = {
   kickoffPause: 1.4,
   /** how long the half-time break holds */
   halfTimePause: 3,
+  /** how long a throw-in/corner/goal-kick pauses play before the restart */
+  restartPause: 1.1,
   /** how much faster the displayed clock runs than real time (1 = realtime) */
   clockScale: 1,
 } as const;
 
-export type MatchStatus = "kickoff" | "playing" | "goal" | "halftime" | "fulltime";
+export type MatchStatus =
+  | "kickoff"
+  | "playing"
+  | "goal"
+  | "restart"
+  | "halftime"
+  | "fulltime";
 
 export type Score = { home: number; away: number };
 
@@ -77,4 +85,4 @@ export function displayClock(period: number, periodElapsed: number): number {
 
 /** True when physics should be frozen (celebration, break, or match over). */
 export const isPlayFrozen = (status: MatchStatus) =>
-  status === "goal" || status === "halftime" || status === "fulltime";
+  status === "goal" || status === "restart" || status === "halftime" || status === "fulltime";

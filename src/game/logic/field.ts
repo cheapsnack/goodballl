@@ -24,3 +24,28 @@ export const FIELD = {
 
 /** x of the goal line for a given side (1 = +x goal, -1 = -x goal). */
 export const goalLineX = (side: 1 | -1) => side * FIELD.halfLength;
+
+/** Corner-arc spot nearest a given (side, z-sign) corner. */
+export function cornerSpot(xSide: 1 | -1, zSide: 1 | -1): { x: number; z: number } {
+  return {
+    x: xSide * (FIELD.halfLength - 0.6),
+    z: zSide * (FIELD.halfWidth - 0.6),
+  };
+}
+
+/** Goal-kick spot: edge of the six-yard box, on the side the ball went out. */
+export function goalKickSpot(side: 1 | -1, zSign: 1 | -1): { x: number; z: number } {
+  const sixYardHalfWidth = FIELD.goalHalfWidth + 5.5;
+  return {
+    x: side * (FIELD.halfLength - 5.5),
+    z: zSign * Math.min(sixYardHalfWidth, FIELD.halfWidth - 1),
+  };
+}
+
+/** Throw-in spot: on the touchline, at the z where the ball crossed it. */
+export function throwInSpot(x: number, zSide: 1 | -1): { x: number; z: number } {
+  return {
+    x: Math.max(-FIELD.halfLength + 1, Math.min(FIELD.halfLength - 1, x)),
+    z: zSide * (FIELD.halfWidth - 0.3),
+  };
+}

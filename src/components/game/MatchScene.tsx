@@ -19,18 +19,25 @@ import {
 import { clampToPitch, paramsFromAttributes, stepMovement } from "../../game/logic/movement";
 import {
   applyImpulse,
+  BALL_RADIUS,
   resolvePlayerBall,
   stepBall,
   STRIKE_TUNING,
 } from "../../game/logic/ballPhysics";
 import { canStrike, resolveStrike, stepCharge } from "../../game/logic/striking";
-import { stepBroadcastCamera, type CameraFrame } from "../../game/logic/camera";
+import {
+  stepBroadcastCamera,
+  stepRunCamera,
+  type CameraFrame,
+  type CameraMode,
+} from "../../game/logic/camera";
 import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import { nearestDefenderIndex, stepDefender } from "../../game/logic/ai/defender";
 import { detectGoal, isPlayFrozen, MATCH_TUNING } from "../../game/logic/match";
+import { detectOutOfBounds } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
 import { getClub, playerAt, playersAt } from "../../game/data/clubs";
-import type { Kinematics, MovementInput } from "../../game/types";
+import type { BallState, Kinematics, MovementInput } from "../../game/types";
 
 export function MatchScene() {
   const input = useKeyboardInput();
@@ -59,6 +66,28 @@ export function MatchScene() {
     position: { x: 0, y: 26, z: 30 },
     lookAt: { x: 0, y: 0, z: 0 },
   });
+  /** Sticky chaser index so defenders don't flicker who's pressing the ball. */
+  const chaserRef = useRef(-1);
+  /** Edge-detects the camera toggle key (it's a held boolean, not a press event). */
+  const cameraKeyHeld = useRef(false);
+
+  /** Drives the three.js camera for one frame in whichever mode is active. */
+  const applyCamera = (
+    mode: CameraMode,
+    ballPos: { x: number; y: number; z: number },
+    ballVel: { x: number; y: number; z: number },
+    playerPos: { x: number; y: number; z: number },
+    playerHeading: number,
+    dt: number,
+  ) => {
+    camFrame.current =
+      mode === "run"
+        ? stepRunCamera(camFrame.current, playerPos, playerHeading, dt)
+        : stepBroadcastCamera(camFrame.current, ballPos, ballVel, dt);
+    const f = camFrame.current;
+    camera.position.set(f.position.x, f.position.y, f.position.z);
+    camera.lookAt(f.lookAt.x, f.lookAt.y, f.lookAt.z);
+  };
 
   /** Pushes simulation bodies onto the three.js meshes. */
   const syncMeshes = (
@@ -103,6 +132,14 @@ export function MatchScene() {
     const store = useGameStore.getState();
     const keys = input.current;
 
+    // --- camera toggle (edge-detected: the key is a held boolean) ---
+    let cameraMode = store.cameraMode;
+    if (keys.cameraToggle && !cameraKeyHeld.current) {
+      cameraMode = cameraMode === "broadcast" ? "run" : "broadcast";
+      useGameStore.setState({ cameraMode });
+    }
+    cameraKeyHeld.current = keys.cameraToggle;
+
     // --- match state machine ---
     // Non-playing statuses freeze the sim; the camera still runs below so the
     // celebration/kickoff shot stays alive.
@@ -121,6 +158,24 @@ export function MatchScene() {
           matchStatus: "kickoff",
           statusTimer: MATCH_TUNING.kickoffPause,
         });
+      } else if (store.matchStatus === "restart" && store.restart) {
+        // Drop the ball at the throw-in/corner/goal-kick spot and go live —
+        // whoever gets there first (human or AI) plays it, same as a loose ball.
+        const spot = store.restart.position;
+        const placedBall: BallState = {
+          position: { x: spot.x, y: BALL_RADIUS, z: spot.z },
+          velocity: { x: 0, y: 0, z: 0 },
+          heading: 0,
+          spin: 0,
+        };
+        useGameStore.setState({
+          ball: placedBall,
+          lastTouch: store.restart.team,
+          restart: null,
+          matchStatus: "playing",
+          statusTimer: 0,
+        });
+        playWhistle();
       } else if (store.matchStatus === "halftime") {
         store.resetPositions();
         useGameStore.setState({
@@ -131,19 +186,10 @@ export function MatchScene() {
         });
       }
 
-      const frozen = store.ball;
-      camFrame.current = stepBroadcastCamera(
-        camFrame.current,
-        frozen.position,
-        { x: 0, y: 0, z: 0 },
-        dt,
-      );
-      const cf = camFrame.current;
-      camera.position.set(cf.position.x, cf.position.y, cf.position.z);
-      camera.lookAt(cf.lookAt.x, cf.lookAt.y, cf.lookAt.z);
+      const s2 = useGameStore.getState();
+      applyCamera(cameraMode, s2.ball.position, { x: 0, y: 0, z: 0 }, s2.player.position, s2.player.heading, dt);
 
       // Snap meshes to the (possibly reset) bodies so kickoff looks right.
-      const s2 = useGameStore.getState();
       syncMeshes(s2, 0);
       return;
     }
@@ -172,18 +218,27 @@ export function MatchScene() {
     // --- strike ---
     let ball = store.ball;
     let cooldown = Math.max(0, store.strikeCooldown - dt);
+    let lastTouch = store.lastTouch;
 
     if (released && canStrike(player, ball)) {
-      // No teammates yet, so no pass target to assist toward.
-      const strike = resolveStrike(player, prevCharge);
+      // Shots get a light on-target nudge toward goal centre; no pass
+      // target yet since there are no teammates on the pitch.
+      const goalTarget =
+        prevCharge.action === "shoot"
+          ? { x: DEFENDING_SIDE * PITCH.halfLength, z: 0 }
+          : undefined;
+      const strike = resolveStrike(player, prevCharge, goalTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
+      lastTouch = "home";
       playKick(prevCharge.power);
     }
 
     // --- ball (dribble capture is suppressed right after a strike) ---
     if (cooldown <= 0) {
+      const beforeDribble = ball;
       ball = resolvePlayerBall(ball, player, PLAYER_RADIUS, dt);
+      if (ball !== beforeDribble) lastTouch = "home";
     }
     ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
@@ -210,10 +265,16 @@ export function MatchScene() {
 
     const keeperState = decision.state;
     const saved = tryKeeperSave(ball, keeper, keeperState, DEFENDING_SIDE);
-    if (saved) ball = saved;
+    if (saved) {
+      ball = saved;
+      lastTouch = "away";
+    }
 
     // --- outfield defenders ---
-    const chaser = nearestDefenderIndex(store.defenders, ball);
+    // Sticky chaser: only the previous chaser or someone clearly closer
+    // presses, so the pair doesn't flicker between them every frame.
+    const chaser = nearestDefenderIndex(store.defenders, ball, chaserRef.current);
+    chaserRef.current = chaser;
     const defenders = store.defenders.map((d, i) => {
       const role = DEFENDER_ROLES[i] ?? DEFENDER_ROLES[0]!;
       const ai = stepDefender(d, role, ball, i === chaser);
@@ -223,17 +284,39 @@ export function MatchScene() {
 
     // Defenders shove the ball too, so a challenge actually wins possession.
     for (const d of defenders) {
+      const beforeContact = ball;
       ball = resolvePlayerBall(ball, d, PLAYER_RADIUS, dt);
+      if (ball !== beforeContact) lastTouch = "away";
     }
 
-    // --- goal detection & period end ---
+    // --- goal detection, dead-ball restarts & period end ---
     const goal = detectGoal(store.ball, ball);
     if (goal) {
-      useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown, keeper, keeperState, defenders, matchTime });
+      useGameStore.setState({ player, ball, charge, strikeCooldown: cooldown, keeper, keeperState, defenders, matchTime, lastTouch });
       useGameStore.getState().recordGoal(goal.scorer);
       playWhistle();
       if (goal.scorer === "home") playCrowdRoar();
       else playCrowdGroan();
+      return;
+    }
+
+    const outOfBounds = detectOutOfBounds(store.ball, ball, lastTouch);
+    if (outOfBounds) {
+      useGameStore.setState({
+        player,
+        ball,
+        charge,
+        strikeCooldown: cooldown,
+        keeper,
+        keeperState,
+        defenders,
+        matchTime,
+        lastTouch,
+        restart: outOfBounds,
+        matchStatus: "restart",
+        statusTimer: MATCH_TUNING.restartPause,
+      });
+      playWhistle();
       return;
     }
 
@@ -256,16 +339,13 @@ export function MatchScene() {
       keeper,
       keeperState,
       defenders,
+      lastTouch,
     });
 
     syncMeshes({ player, ball, keeper, keeperState, defenders }, dt);
 
-
-    // --- camera (broadcast follow, smoothed) ---
-    camFrame.current = stepBroadcastCamera(camFrame.current, ball.position, ball.velocity, dt);
-    const f = camFrame.current;
-    camera.position.set(f.position.x, f.position.y, f.position.z);
-    camera.lookAt(f.lookAt.x, f.lookAt.y, f.lookAt.z);
+    // --- camera ---
+    applyCamera(cameraMode, ball.position, ball.velocity, player.position, player.heading, dt);
   });
 
   return (

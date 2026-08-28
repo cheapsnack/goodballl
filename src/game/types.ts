@@ -59,6 +59,8 @@ export type ActionInput = {
   pass: boolean;
   /** Loft modifier — turns a driven strike into a lofted one. */
   loft: boolean;
+  /** Held state of the camera-toggle key; edge-detected by the scene. */
+  cameraToggle: boolean;
 };
 
 /** Everything the input hook produces in one frame. */

@@ -7,6 +7,7 @@ import { FIELD } from "../logic/field";
 import { initialKeeperState, keeperHome, type KeeperState } from "../logic/ai/goalkeeper";
 import type { DefenderRole } from "../logic/ai/defender";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
+import type { RestartAward } from "../logic/restarts";
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID } from "../data/clubs";
 
 export const PITCH = {
@@ -85,6 +86,10 @@ type GameState = {
   statusTimer: number;
   /** who scored the goal currently being celebrated */
   lastScorer: TeamSide | null;
+  /** which team touched the ball last — decides throw-ins, corners, goal kicks */
+  lastTouch: TeamSide;
+  /** the pending dead-ball restart while matchStatus is "restart" */
+  restart: RestartAward | null;
 
   /** --- club selection, set from the menu before kickoff --- */
   homeClubId: string;
@@ -126,6 +131,8 @@ export const useGameStore = create<GameState>((set) => ({
   matchStatus: "kickoff",
   statusTimer: MATCH_TUNING.kickoffPause,
   lastScorer: null,
+  lastTouch: "home",
+  restart: null,
 
   homeClubId: DEFAULT_HOME_CLUB_ID,
   awayClubId: DEFAULT_AWAY_CLUB_ID,
@@ -155,5 +162,7 @@ export const useGameStore = create<GameState>((set) => ({
       matchStatus: "kickoff",
       statusTimer: MATCH_TUNING.kickoffPause,
       lastScorer: null,
+      lastTouch: "home",
+      restart: null,
     }),
 }));
