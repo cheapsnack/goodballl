@@ -44,8 +44,7 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <span className="text-[#63d68a]">Football</span>
         </h1>
         <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-background/60">
-          {MATCH_TUNING.periods} halves · {minutes} minutes · you attack the far goal against a
-          keeper and two defenders.
+          {MATCH_TUNING.periods} halves · {minutes} minutes · 11 v 11 · switch players with Q.
         </p>
 
         <ClubPicker label="Your Club" selectedId={homeId} onSelect={setHomeId} />
@@ -76,6 +75,10 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <span>Pass</span>
           <span>Ctrl</span>
           <span>Loft</span>
+          <span>C</span>
+          <span>Toggle camera</span>
+          <span>Q</span>
+          <span>Switch player</span>
         </div>
       </div>
     </div>
