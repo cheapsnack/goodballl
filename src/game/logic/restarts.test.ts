@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectOutOfBounds } from "./src/game/logic/restarts";
+import { detectOutOfBounds } from "./restarts";
 const ball = (x:number,z:number)=>({position:{x,y:0.36,z},velocity:{x:0,y:0,z:0},heading:0,spin:0});
 describe("restarts",()=>{
   it("throw-in to away when home puts it out",()=>{
