@@ -14,8 +14,14 @@ export const MATCH_TUNING = {
   kickoffPause: 1.4,
   /** how long the half-time break holds */
   halfTimePause: 3,
-  /** how long a throw-in/corner/goal-kick pauses play before the restart */
-  restartPause: 1.1,
+  /**
+   * How long a throw-in/corner/goal-kick pauses before the restart goes
+   * live. Short on purpose — this used to be 1.1s with everyone frozen
+   * solid, which read as the match just stopping dead. Players now keep
+   * moving into position during the countdown (see MatchScene), so this
+   * only needs to cover the whistle and the "Corner"/"Throw-in" banner.
+   */
+  restartPause: 0.55,
   /** how much faster the displayed clock runs than real time (1 = realtime) */
   clockScale: 1,
 } as const;

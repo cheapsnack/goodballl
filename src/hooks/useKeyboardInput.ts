@@ -18,6 +18,7 @@ const KEYS: Record<string, string> = {
   ControlRight: "loft",
   KeyC: "cameraToggle",
   KeyQ: "switchPlayer",
+  KeyF: "tackle",
 };
 
 /**
@@ -34,6 +35,7 @@ export function useKeyboardInput() {
     loft: false,
     cameraToggle: false,
     switchPlayer: false,
+    tackle: false,
   });
   const held = useRef<Set<string>>(new Set());
 
@@ -56,6 +58,7 @@ export function useKeyboardInput() {
         loft: h.has("loft"),
         cameraToggle: h.has("cameraToggle"),
         switchPlayer: h.has("switchPlayer"),
+        tackle: h.has("tackle"),
       };
     };
 

@@ -254,6 +254,8 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <span>Toggle camera</span>
           <span>Q</span>
           <span>Switch player</span>
+          <span>F</span>
+          <span>Tackle</span>
         </div>
       </div>
     </div>
