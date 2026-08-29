@@ -240,3 +240,54 @@ export function stepOutfield(
     sprintRange: t.sprintRange * 2,
   });
 }
+
+/** How close the ball has to be for an AI player to be considered "carrying" it. */
+export const AI_POSSESSION_RADIUS = 1.0;
+
+/** True once a chasing AI player is close enough to the ball to act on it (shoot/dribble) rather than still be closing the gap. */
+export function hasPossession(self: Kinematics, ball: BallState): boolean {
+  return distanceToBall(self, ball) < AI_POSSESSION_RADIUS;
+}
+
+/**
+ * Movement for an AI player who has the ball at their feet: blends between
+ * "stay with the ball" and "drive at the opponent's goal", weighted by
+ * `bias` (0 = just follows the ball like a normal chaser, 1 = beelines for
+ * goal regardless of the ball's exact position). This is what makes
+ * possession look like an intentional run rather than aimless shepherding.
+ */
+export function dribbleTowardGoal(
+  self: Kinematics,
+  ball: BallState,
+  goalX: number,
+  bias: number,
+): MovementInput {
+  const toBallX = ball.position.x - self.position.x;
+  const toBallZ = ball.position.z - self.position.z;
+  const toGoalX = goalX - self.position.x;
+  const toGoalZ = -self.position.z; // aim roughly at the goal's centre line
+
+  const bx = toBallX * (1 - bias) + toGoalX * bias;
+  const bz = toBallZ * (1 - bias) + toGoalZ * bias;
+  const len = Math.hypot(bx, bz) || 1;
+  return { x: bx / len, z: bz / len, sprint: true };
+}
+
+/**
+ * A shot direction at goal with skill-based inaccuracy: `accuracy` 1 aims
+ * dead-on, lower values widen the possible error cone. `rng` is injectable
+ * for deterministic tests.
+ */
+export function aiShotDirection(
+  self: Kinematics,
+  goalX: number,
+  accuracy: number,
+  rng: () => number = Math.random,
+): { x: number; z: number } {
+  const dx = goalX - self.position.x;
+  const dz = -self.position.z;
+  const baseAngle = Math.atan2(dx, -dz);
+  const maxError = (1 - clamp(accuracy, 0, 1)) * 0.5; // radians
+  const angle = baseAngle + (rng() - 0.5) * 2 * maxError;
+  return { x: Math.sin(angle), z: -Math.cos(angle) };
+}

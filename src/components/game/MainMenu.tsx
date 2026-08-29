@@ -2,12 +2,14 @@ import { useRef, useState } from "react";
 import { initAudio, isAudioEnabled, setAudioEnabled } from "../../game/logic/audio";
 import { MATCH_TUNING } from "../../game/logic/match";
 import { CLUBS, DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID } from "../../game/data/clubs";
+import { DIFFICULTY_LABEL, type Difficulty } from "../../game/logic/ai/difficulty";
 import { useGameStore } from "../../game/store/useGameStore";
 import { createRoom, joinRoom } from "../../multiplayer/roomClient";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 
-type Mode = "ai" | "friend";
+type Mode = "ai" | "local2p" | "friend";
 type FriendStep = "choose" | "create-waiting" | "join-form" | "connecting";
+const DIFFICULTIES: Difficulty[] = ["beginner", "amateur", "advanced", "expert"];
 
 /**
  * Pre-match screen. Rendered instead of the Canvas so nothing simulates (and
@@ -20,6 +22,8 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
   const [awayId, setAwayId] = useState(DEFAULT_AWAY_CLUB_ID);
   const setClubs = useGameStore((s) => s.setClubs);
   const setNetRoom = useGameStore((s) => s.setNetRoom);
+  const difficulty = useGameStore((s) => s.difficulty);
+  const setDifficulty = useGameStore((s) => s.setDifficulty);
 
   const [mode, setMode] = useState<Mode>("ai");
   const [friendStep, setFriendStep] = useState<FriendStep>("choose");
@@ -67,6 +71,14 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
     setAudioEnabled(sound);
     setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
     setNetRoom("local", null, null);
+    onKickoff();
+  };
+
+  const startLocal2P = () => {
+    if (sound) initAudio();
+    setAudioEnabled(sound);
+    setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
+    setNetRoom("local2p", null, null);
     onKickoff();
   };
 
@@ -119,7 +131,7 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
       />
       <div className="relative w-full max-w-md px-8 py-10 text-center">
         <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
-          {mode === "ai" ? "Kickoff Mode" : "Play vs Friend"}
+          {mode === "ai" ? "Kickoff Mode" : mode === "local2p" ? "Local 1v1" : "Play vs Friend"}
         </div>
         <h1 className="mt-3 font-sans text-6xl font-black uppercase leading-none tracking-tight text-background">
           Arcade
@@ -130,9 +142,12 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           {MATCH_TUNING.periods} halves · {minutes} minutes · 11 v 11 · switch players with Q.
         </p>
 
-        <div className="mt-6 flex justify-center gap-2">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
           <ModeTab active={mode === "ai"} onClick={() => { setMode("ai"); cancelFriendFlow(); }}>
             Vs AI
+          </ModeTab>
+          <ModeTab active={mode === "local2p"} onClick={() => { setMode("local2p"); cancelFriendFlow(); }}>
+            Local 1v1
           </ModeTab>
           <ModeTab active={mode === "friend"} onClick={() => setMode("friend")}>
             Vs Friend
@@ -143,9 +158,28 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <>
             <ClubPicker label="Your Club" selectedId={homeId} onSelect={setHomeId} />
             <ClubPicker label="Opponent" selectedId={awayId} onSelect={setAwayId} />
+            <DifficultyPicker selected={difficulty} onSelect={setDifficulty} />
             <button
               onClick={startVsAi}
               className="mt-8 w-full rounded-md bg-[#63d68a] px-6 py-4 font-sans text-lg font-black uppercase tracking-[0.2em] text-[#0d1a12] transition-transform hover:scale-[1.02] active:scale-[0.99]"
+            >
+              Kick Off
+            </button>
+          </>
+        )}
+
+        {mode === "local2p" && (
+          <>
+            <ClubPicker label="Player 1's Club" selectedId={homeId} onSelect={setHomeId} />
+            <ClubPicker label="Player 2's Club" selectedId={awayId} onSelect={setAwayId} />
+            <div className="mt-6 rounded-md bg-background/5 px-4 py-3 text-left text-xs leading-relaxed text-background/60">
+              <span className="font-bold text-background/80">One keyboard, two players.</span> Player 1
+              uses WASD + Space/E/Ctrl/Q/F/C. Player 2 uses the Arrow keys + Enter (shoot) / &apos; (pass)
+              / Slash (loft) / Period (tackle) / Semicolon (switch player).
+            </div>
+            <button
+              onClick={startLocal2P}
+              className="mt-6 w-full rounded-md bg-[#63d68a] px-6 py-4 font-sans text-lg font-black uppercase tracking-[0.2em] text-[#0d1a12] transition-transform hover:scale-[1.02] active:scale-[0.99]"
             >
               Kick Off
             </button>
@@ -240,23 +274,72 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
         </button>
 
         <div className="mt-10 grid grid-cols-2 gap-y-2 text-left font-mono text-[11px] text-background/50">
-          <span>WASD / Arrows</span>
-          <span>Move</span>
-          <span>Shift</span>
-          <span>Sprint</span>
-          <span>Space (hold)</span>
-          <span>Shoot</span>
-          <span>E (hold)</span>
-          <span>Pass</span>
-          <span>Ctrl</span>
-          <span>Loft</span>
-          <span>C</span>
-          <span>Toggle camera</span>
-          <span>Q</span>
-          <span>Switch player</span>
-          <span>F</span>
-          <span>Tackle</span>
+          {mode === "local2p" ? (
+            <>
+              <span>P1: WASD</span>
+              <span>Move</span>
+              <span>P1: Space/E/Ctrl</span>
+              <span>Shoot/Pass/Loft</span>
+              <span>P2: Arrows</span>
+              <span>Move</span>
+              <span>P2: Enter / ' / . / ;</span>
+              <span>Shoot/Pass/Tackle/Switch</span>
+            </>
+          ) : (
+            <>
+              <span>WASD / Arrows</span>
+              <span>Move</span>
+              <span>Shift</span>
+              <span>Sprint</span>
+              <span>Space (hold)</span>
+              <span>Shoot</span>
+              <span>E (hold)</span>
+              <span>Pass</span>
+              <span>Ctrl</span>
+              <span>Loft</span>
+              <span>C</span>
+              <span>Toggle camera</span>
+              <span>Q</span>
+              <span>Switch player</span>
+              <span>F</span>
+              <span>Tackle</span>
+            </>
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function DifficultyPicker({
+  selected,
+  onSelect,
+}: {
+  selected: Difficulty;
+  onSelect: (d: Difficulty) => void;
+}) {
+  return (
+    <div className="mt-6 text-left">
+      <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-background/40">
+        AI Difficulty
+      </div>
+      <div className="mt-2 grid grid-cols-4 gap-2">
+        {DIFFICULTIES.map((d) => {
+          const active = d === selected;
+          return (
+            <button
+              key={d}
+              onClick={() => onSelect(d)}
+              className={`rounded-md border px-2 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors ${
+                active
+                  ? "border-[#63d68a] bg-[#63d68a]/15 text-background"
+                  : "border-background/15 text-background/50 hover:border-background/30"
+              }`}
+            >
+              {DIFFICULTY_LABEL[d]}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
