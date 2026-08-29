@@ -1,50 +1,30 @@
-import type { BallState, Kinematics } from "../game/types";
-import type { KeeperState } from "../game/logic/ai/goalkeeper";
-import type { MatchStatus, Score, TeamSide } from "../game/logic/match";
+import type { ActionInput, MovementInput } from "../game/types";
 
-/** Who this browser is in the current match. */
-export type NetRole = "local" | "host" | "guest";
-
-/** Broadcast event names on the `room:{code}` channel. */
-export const ROOM_EVENTS = {
-  guestJoined: "guest-joined",
-  input: "guest-input",
-  state: "host-state",
-} as const;
-
-/** Sent once by the guest, right after they claim the room. */
 export type GuestJoinedPayload = { guestClubId: string };
 
-/** The guest's raw keys, relayed to the host every frame. */
-export type GuestInputPayload = {
-  x: number;
-  z: number;
-  sprint: boolean;
-  shoot: boolean;
-  pass: boolean;
-  loft: boolean;
-  cameraToggle: boolean;
-  switchPlayer: boolean;
-};
+/** Everything the guest's local input hook produces, sent to the host every frame. */
+export type GuestInputPayload = MovementInput & ActionInput;
+
+type BodySnapshot = { x: number; z: number; heading: number };
+type GKSnapshot = BodySnapshot & { phase: string; diveDir: -1 | 0 | 1 };
 
 /**
- * A full authoritative frame from the host. The guest simulates nothing, so
- * this carries everything its renderer and HUD need.
+ * A compact, serializable slice of match state — just enough for the guest
+ * to render the same match, not the full simulation types (velocities,
+ * timers, etc. the guest never needs since it never steps physics itself).
  */
-export type StateSnapshot = {
-  homeOutfield: Kinematics[];
-  homeGK: Kinematics;
-  homeGKState: KeeperState;
-  awayOutfield: Kinematics[];
-  awayGK: Kinematics;
-  awayGKState: KeeperState;
-  ball: BallState;
+export type MatchSnapshot = {
+  homeOutfield: BodySnapshot[];
+  homeGK: GKSnapshot;
+  awayOutfield: BodySnapshot[];
+  awayGK: GKSnapshot;
+  ball: { x: number; y: number; z: number; vx: number; vz: number };
   controlledIndex: number;
   awayControlledIndex: number | null;
-  score: Score;
+  score: { home: number; away: number };
   matchTime: number;
   period: number;
-  matchStatus: MatchStatus;
+  matchStatus: string;
   statusTimer: number;
-  lastScorer: TeamSide | null;
+  lastScorer: "home" | "away" | null;
 };
