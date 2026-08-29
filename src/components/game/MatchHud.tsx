@@ -13,6 +13,8 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
   const period = useGameStore((s) => s.period);
   const status = useGameStore((s) => s.matchStatus);
   const lastScorer = useGameStore((s) => s.lastScorer);
+  const netRole = useGameStore((s) => s.netRole);
+  const awayLabel = netRole === "local" ? "AI" : "P2";
 
   const clock = formatClock(displayClock(period, matchTime));
 
@@ -27,7 +29,7 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
             <span className="opacity-40">-</span>
             <span>{score.away}</span>
           </div>
-          <Badge team="away" />
+          <Badge team="away" label={awayLabel} />
           <div className="flex flex-col items-center justify-center border-l border-background/20 px-3 py-1">
             <span className="font-mono text-sm font-semibold tabular-nums leading-tight">
               {clock}
@@ -57,12 +59,14 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
           subtitle={`${score.home} - ${score.away} · ${MATCH_TUNING.periods} halves played`}
         >
           <div className="pointer-events-auto mt-5 flex justify-center gap-3">
-            <button
-              onClick={() => resetMatch()}
-              className="rounded-md bg-background px-5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-foreground transition-transform hover:scale-[1.03]"
-            >
-              Rematch
-            </button>
+            {netRole !== "guest" && (
+              <button
+                onClick={() => resetMatch()}
+                className="rounded-md bg-background px-5 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-foreground transition-transform hover:scale-[1.03]"
+              >
+                Rematch
+              </button>
+            )}
             {onExit && (
               <button
                 onClick={onExit}
@@ -78,14 +82,14 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
   );
 }
 
-function Badge({ team }: { team: "home" | "away" }) {
+function Badge({ team, label }: { team: "home" | "away"; label?: string }) {
   const t = TEAMS[team];
   return (
     <div
       className="flex items-center px-3 py-2 text-[11px] font-bold tracking-[0.16em]"
       style={{ backgroundColor: t.color }}
     >
-      {t.short}
+      {label ?? t.short}
     </div>
   );
 }

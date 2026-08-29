@@ -42,7 +42,21 @@ import { detectGoal, isPlayFrozen, MATCH_TUNING, type TeamSide } from "../../gam
 import { detectOutOfBounds } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
 import { getClub, playerAt } from "../../game/data/clubs";
+import { useRoomChannel } from "../../multiplayer/useRoomChannel";
+import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
+import type { GuestInputPayload } from "../../multiplayer/types";
 import type { BallState, Kinematics, MovementInput } from "../../game/types";
+
+const IDLE_GUEST_INPUT: GuestInputPayload = {
+  x: 0,
+  z: 0,
+  sprint: false,
+  shoot: false,
+  pass: false,
+  loft: false,
+  cameraToggle: false,
+  switchPlayer: false,
+};
 
 export function MatchScene() {
   const input = useKeyboardInput();
@@ -55,9 +69,10 @@ export function MatchScene() {
   const awayRefs = useRef<(THREE.Group | null)[]>([]);
   const ballRef = useRef<THREE.Group>(null);
 
-  // Clubs are chosen on the menu before this component ever mounts, so a
-  // one-time read here (not a subscription) is enough to pull rosters/kits.
-  const { homeClubId, awayClubId } = useGameStore.getState();
+  // Clubs, networking role and room are chosen on the menu before this
+  // component ever mounts, so a one-time read here (not a subscription) is
+  // enough — none of them change mid-match.
+  const { homeClubId, awayClubId, netRole, roomCode } = useGameStore.getState();
   const homeClub = getClub(homeClubId);
   const awayClub = getClub(awayClubId);
   const homeGKPlayer = playerAt(homeClub, "GK");
@@ -81,6 +96,50 @@ export function MatchScene() {
   const chaserRef = useRef({ home: -1, away: -1 });
   /** Edge-detects held-boolean keys (camera toggle, player switch). */
   const keyEdge = useRef({ camera: false, switchPlayer: false });
+  /** Host-side: edge-detects the guest's switch-player key from the network stream. */
+  const guestKeyEdge = useRef(false);
+  /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
+  const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
+  /** Host-side: throttles how often a state snapshot is broadcast. */
+  const broadcastTick = useRef(0);
+
+  // Only set up a realtime channel for a networked match — for local
+  // single-player, `code` is null and the hook is a no-op.
+  const channel = useRoomChannel(netRole === "local" ? null : roomCode, {
+    onInput: (payload) => {
+      guestInputRef.current = payload;
+    },
+    onState: (snapshot) => {
+      useGameStore.setState(applySnapshot(snapshot));
+    },
+  });
+
+  /** Host only: throttled broadcast of the current frame to the guest. */
+  const maybeBroadcastState = () => {
+    if (netRole !== "host") return;
+    broadcastTick.current++;
+    if (broadcastTick.current % 2 !== 0) return; // ~30Hz at a 60fps frame rate
+    const s = useGameStore.getState();
+    channel.sendState(
+      buildSnapshot({
+        homeOutfield: s.homeOutfield,
+        homeGK: s.homeGK,
+        homeGKState: s.homeGKState,
+        awayOutfield: s.awayOutfield,
+        awayGK: s.awayGK,
+        awayGKState: s.awayGKState,
+        ball: s.ball,
+        controlledIndex: s.controlledIndex,
+        awayControlledIndex: s.awayControlledIndex,
+        score: s.score,
+        matchTime: s.matchTime,
+        period: s.period,
+        matchStatus: s.matchStatus,
+        statusTimer: s.statusTimer,
+        lastScorer: s.lastScorer,
+      }),
+    );
+  };
 
   /** Drives the three.js camera for one frame in whichever mode is active. */
   const applyCamera = (
@@ -150,7 +209,7 @@ export function MatchScene() {
     const store = useGameStore.getState();
     const keys = input.current;
 
-    // --- camera toggle & player switch (edge-detected: keys are held booleans) ---
+    // --- camera toggle (always local — each screen picks its own view) ---
     let cameraMode = store.cameraMode;
     if (keys.cameraToggle && !keyEdge.current.camera) {
       cameraMode = cameraMode === "broadcast" ? "run" : "broadcast";
@@ -158,6 +217,26 @@ export function MatchScene() {
     }
     keyEdge.current.camera = keys.cameraToggle;
 
+    // --- guest: never simulates locally, just relays input and renders ---
+    // whatever the host's last broadcast put in the store.
+    if (netRole === "guest") {
+      channel.sendInput(keys);
+      const s = useGameStore.getState();
+      const idx = s.awayControlledIndex ?? 0;
+      const controlled = s.awayOutfield[idx] ?? s.awayOutfield[0]!;
+      applyCamera(
+        cameraMode,
+        s.ball.position,
+        { x: s.ball.velocity.x, y: 0, z: s.ball.velocity.z },
+        controlled.position,
+        controlled.heading,
+        dt,
+      );
+      syncMeshes(s, dt);
+      return;
+    }
+
+    // --- player switch (home side: local human, or host's own player) ---
     if (keys.switchPlayer && !keyEdge.current.switchPlayer) {
       const next = nearestToBallIndex(store.homeOutfield, store.ball);
       if (next !== store.controlledIndex) {
@@ -166,7 +245,20 @@ export function MatchScene() {
     }
     keyEdge.current.switchPlayer = keys.switchPlayer;
 
-    // Re-read in case the switch just changed it.
+    // --- player switch (away side: only the guest, relayed through the host) ---
+    let awayControlledIndex = store.awayControlledIndex;
+    if (netRole === "host" && awayControlledIndex !== null) {
+      const guestKeys = guestInputRef.current;
+      if (guestKeys.switchPlayer && !guestKeyEdge.current) {
+        const next = nearestToBallIndex(store.awayOutfield, store.ball);
+        if (next !== awayControlledIndex) {
+          awayControlledIndex = next;
+          useGameStore.setState({ awayControlledIndex });
+        }
+      }
+      guestKeyEdge.current = guestKeys.switchPlayer;
+    }
+
     const controlledIndex = useGameStore.getState().controlledIndex;
 
     // --- match state machine ---
@@ -219,25 +311,20 @@ export function MatchScene() {
       const controlled = s2.homeOutfield[s2.controlledIndex] ?? s2.homeOutfield[0]!;
       applyCamera(cameraMode, s2.ball.position, { x: 0, y: 0, z: 0 }, controlled.position, controlled.heading, dt);
       syncMeshes(s2, 0);
+      maybeBroadcastState();
       return;
     }
 
     // --- clock ---
     const matchTime = store.matchTime + dt * MATCH_TUNING.clockScale;
 
-    // --- charge ---
+    // --- home controlled player (movement is dampened while winding up a strike) ---
     const prevCharge = store.charge;
     const charge = stepCharge(prevCharge, keys, dt);
-    // Released this frame when a charge was running and the key is now up.
     const released = prevCharge.action !== null && charge.action === null;
 
-    // --- controlled player (movement is dampened while winding up a strike) ---
     const move: MovementInput = charge.action
-      ? {
-          x: keys.x * STRIKE_TUNING.chargeMoveScale,
-          z: keys.z * STRIKE_TUNING.chargeMoveScale,
-          sprint: false,
-        }
+      ? { x: keys.x * STRIKE_TUNING.chargeMoveScale, z: keys.z * STRIKE_TUNING.chargeMoveScale, sprint: false }
       : keys;
 
     const controlledBefore = store.homeOutfield[controlledIndex] ?? store.homeOutfield[0]!;
@@ -245,9 +332,36 @@ export function MatchScene() {
     let controlled = stepMovement(controlledBefore, move, controlledParams, dt);
     controlled = clampToPitch(controlled, PITCH.halfLength, PITCH.halfWidth);
 
-    // --- strike ---
+    // --- away controlled player (host only, once a guest is connected) ---
+    const hasAwayHuman = netRole === "host" && awayControlledIndex !== null;
+    const prevAwayCharge = store.awayCharge;
+    let awayCharge = prevAwayCharge;
+    let awayReleased = false;
+    let awayControlled: Kinematics | null = null;
+
+    if (hasAwayHuman) {
+      const guestKeys = guestInputRef.current;
+      awayCharge = stepCharge(prevAwayCharge, guestKeys, dt);
+      awayReleased = prevAwayCharge.action !== null && awayCharge.action === null;
+
+      const awayMove: MovementInput = awayCharge.action
+        ? { x: guestKeys.x * STRIKE_TUNING.chargeMoveScale, z: guestKeys.z * STRIKE_TUNING.chargeMoveScale, sprint: false }
+        : guestKeys;
+
+      const idx = awayControlledIndex!;
+      const awayControlledBefore = store.awayOutfield[idx] ?? store.awayOutfield[0]!;
+      const awayControlledParams = awayParams[idx] ?? awayParams[0]!;
+      awayControlled = clampToPitch(
+        stepMovement(awayControlledBefore, awayMove, awayControlledParams, dt),
+        PITCH.halfLength,
+        PITCH.halfWidth,
+      );
+    }
+
+    // --- strikes ---
     let ball = store.ball;
     let cooldown = Math.max(0, store.strikeCooldown - dt);
+    let awayCooldown = Math.max(0, store.awayStrikeCooldown - dt);
     let lastTouch: TeamSide = store.lastTouch;
 
     if (released && canStrike(controlled, ball)) {
@@ -262,11 +376,26 @@ export function MatchScene() {
       playKick(prevCharge.power);
     }
 
+    if (awayControlled && awayReleased && canStrike(awayControlled, ball)) {
+      const goalTarget =
+        prevAwayCharge.action === "shoot" ? { x: -AWAY_DEFEND_SIDE * PITCH.halfLength, z: 0 } : undefined;
+      const strike = resolveStrike(awayControlled, prevAwayCharge, goalTarget);
+      ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
+      awayCooldown = STRIKE_TUNING.cooldown;
+      lastTouch = "away";
+      playKick(prevAwayCharge.power);
+    }
+
     // --- ball (dribble capture is suppressed right after a strike) ---
     if (cooldown <= 0) {
-      const beforeDribble = ball;
+      const before = ball;
       ball = resolvePlayerBall(ball, controlled, PLAYER_RADIUS, dt);
-      if (ball !== beforeDribble) lastTouch = "home";
+      if (ball !== before) lastTouch = "home";
+    }
+    if (awayControlled && awayCooldown <= 0) {
+      const before = ball;
+      ball = resolvePlayerBall(ball, awayControlled, PLAYER_RADIUS, dt);
+      if (ball !== before) lastTouch = "away";
     }
     ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
@@ -290,7 +419,7 @@ export function MatchScene() {
       lastTouch = "home";
     }
 
-    // --- home outfield (9 AI teammates + the controlled player) ---
+    // --- home outfield (AI teammates + the controlled player) ---
     const homeChaser = nearestChaserIndex(store.homeOutfield, ball, chaserRef.current.home);
     chaserRef.current.home = homeChaser;
     const homeOutfield = store.homeOutfield.map((p, i) => {
@@ -300,16 +429,17 @@ export function MatchScene() {
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
-    // --- away outfield (all 10 AI) ---
+    // --- away outfield (AI, except a connected guest's player) ---
     const awayChaser = nearestChaserIndex(store.awayOutfield, ball, chaserRef.current.away);
     chaserRef.current.away = awayChaser;
     const awayOutfield = store.awayOutfield.map((p, i) => {
+      if (hasAwayHuman && i === awayControlledIndex && awayControlled) return awayControlled;
       const ai = stepOutfield(p, awayXI[i]!.role, ball, i === awayChaser);
       const params = awayParams[i] ?? awayParams[0]!;
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
-    // Everyone but the controlled player only shoves the ball via body
+    // Everyone but the two controlled players only shoves the ball via body
     // contact (no intentional dribble pull) — a simplified stand-in for
     // teammates/opponents winning or deflecting a loose ball.
     for (let i = 0; i < homeOutfield.length; i++) {
@@ -318,9 +448,10 @@ export function MatchScene() {
       ball = resolvePlayerBall(ball, homeOutfield[i]!, PLAYER_RADIUS, dt);
       if (ball !== before) lastTouch = "home";
     }
-    for (const p of awayOutfield) {
+    for (let i = 0; i < awayOutfield.length; i++) {
+      if (hasAwayHuman && i === awayControlledIndex) continue;
       const before = ball;
-      ball = resolvePlayerBall(ball, p, PLAYER_RADIUS, dt);
+      ball = resolvePlayerBall(ball, awayOutfield[i]!, PLAYER_RADIUS, dt);
       if (ball !== before) lastTouch = "away";
     }
 
@@ -337,6 +468,8 @@ export function MatchScene() {
         ball,
         charge,
         strikeCooldown: cooldown,
+        awayCharge,
+        awayStrikeCooldown: awayCooldown,
         matchTime,
         lastTouch,
       });
@@ -344,6 +477,7 @@ export function MatchScene() {
       playWhistle();
       if (goal.scorer === "home") playCrowdRoar();
       else playCrowdGroan();
+      maybeBroadcastState();
       return;
     }
 
@@ -359,6 +493,8 @@ export function MatchScene() {
         ball,
         charge,
         strikeCooldown: cooldown,
+        awayCharge,
+        awayStrikeCooldown: awayCooldown,
         matchTime,
         lastTouch,
         restart: outOfBounds,
@@ -366,6 +502,7 @@ export function MatchScene() {
         statusTimer: MATCH_TUNING.restartPause,
       });
       playWhistle();
+      maybeBroadcastState();
       return;
     }
 
@@ -376,6 +513,7 @@ export function MatchScene() {
         matchStatus: store.period >= MATCH_TUNING.periods ? "fulltime" : "halftime",
         statusTimer: MATCH_TUNING.halfTimePause,
       });
+      maybeBroadcastState();
       return;
     }
 
@@ -390,6 +528,8 @@ export function MatchScene() {
       matchTime,
       charge,
       strikeCooldown: cooldown,
+      awayCharge,
+      awayStrikeCooldown: awayCooldown,
       lastTouch,
     });
 
@@ -397,6 +537,7 @@ export function MatchScene() {
 
     // --- camera ---
     applyCamera(cameraMode, ball.position, ball.velocity, controlled.position, controlled.heading, dt);
+    maybeBroadcastState();
   });
 
   return (
