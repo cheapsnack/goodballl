@@ -132,6 +132,11 @@ export function distanceToBall(body: Kinematics, ball: BallState): number {
   return Math.hypot(ball.position.x - body.position.x, ball.position.z - body.position.z);
 }
 
+/** The formation index a human controls by default: the first forward. */
+export function defaultControlledIndex(xi: OutfieldEntity[]): number {
+  const idx = xi.findIndex((e) => e.role.slot.position === "FWD");
+  return idx >= 0 ? idx : 0;
+}
 /**
  * Index of whoever should press the ball out of a group. Sticky: keeps the
  * current chaser unless someone else is closer by more than the switch
