@@ -174,6 +174,13 @@ export function MatchScene() {
     }
   };
 
+  /** Bumps a one-shot animation counter on a player's ref — Player.tsx watches for the change. */
+  const bumpAnim = (group: THREE.Group | null, field: "kickCount" | "tackleCount") => {
+    if (!group) return;
+    const data = group.userData as { kickCount?: number; tackleCount?: number };
+    data[field] = (data[field] ?? 0) + 1;
+  };
+
   /** Drives the three.js camera for one frame in whichever mode is active. */
   const applyCamera = (
     mode: CameraMode,
@@ -210,6 +217,7 @@ export function MatchScene() {
       ref.position.set(gk.position.x, 0, gk.position.z);
       ref.rotation.y = gk.heading;
       ref.rotation.x = state.phase === "diving" ? state.diveDir * 0.95 : 0;
+      ref.userData["speed"] = Math.hypot(gk.velocity.x, gk.velocity.z);
     };
     placeGK(homeGKRef.current, s.homeGK, s.homeGKState);
     placeGK(awayGKRef.current, s.awayGK, s.awayGKState);
@@ -219,12 +227,14 @@ export function MatchScene() {
       if (!ref) return;
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
+      ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
     });
     s.awayOutfield.forEach((p, i) => {
       const ref = awayRefs.current[i];
       if (!ref) return;
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
+      ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
     });
 
     if (ballRef.current) {
@@ -464,6 +474,7 @@ export function MatchScene() {
       };
       tackleState.current.cooldown = TACKLE_TUNING.cooldown;
       tackleState.current.active = TACKLE_TUNING.activeWindow;
+      bumpAnim(homeRefs.current[controlledIndex] ?? null, "tackleCount");
     }
     keyEdge.current.tackle = keys.tackle;
 
@@ -503,6 +514,7 @@ export function MatchScene() {
         };
         awayTackleState.current.cooldown = TACKLE_TUNING.cooldown;
         awayTackleState.current.active = TACKLE_TUNING.activeWindow;
+        bumpAnim(awayRefs.current[idx] ?? null, "tackleCount");
       }
       guestTackleKeyEdge.current = guestKeys.tackle;
     }
@@ -523,6 +535,7 @@ export function MatchScene() {
       cooldown = STRIKE_TUNING.cooldown;
       lastTouch = "home";
       playKick(prevCharge.power);
+      bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
     }
 
     if (awayControlled && awayReleased && canStrike(awayControlled, ball)) {
@@ -533,6 +546,7 @@ export function MatchScene() {
       awayCooldown = STRIKE_TUNING.cooldown;
       lastTouch = "away";
       playKick(prevAwayCharge.power);
+      bumpAnim(awayRefs.current[awayControlledIndex ?? 0] ?? null, "kickCount");
     }
 
     // --- ball (dribble capture is suppressed right after a strike) ---
