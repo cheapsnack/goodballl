@@ -94,6 +94,15 @@ type GameState = {
   homeClubId: string;
   awayClubId: string;
 
+  /** --- networking (Play vs Friend) --- */
+  netRole: NetRole;
+  /** shared room code; null for a local match */
+  roomCode: string | null;
+  /** database row id for the room; null for a local match */
+  roomId: string | null;
+  /** which away outfield player the guest controls; null when the away side is fully AI */
+  awayControlledIndex: number | null;
+
   setInput: (i: MovementInput) => void;
   setCameraMode: (m: CameraMode) => void;
   setControlledIndex: (i: number) => void;
