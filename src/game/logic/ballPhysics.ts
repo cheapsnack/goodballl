@@ -4,7 +4,7 @@ export const BALL_RADIUS = 0.36;
 
 export const BALL_TUNING = {
   /** exponential ground-roll damping per second */
-  rollFriction: 0.95,
+  rollFriction: 1.15,
   /** exponential air drag per second */
   airDrag: 0.16,
   gravity: -21,
@@ -13,16 +13,16 @@ export const BALL_TUNING = {
   /** horizontal energy kept on each bounce */
   bounceGrip: 0.78,
   /** how hard the player's body shoves the ball on contact */
-  pushStrength: 7,
+  pushStrength: 5,
   /** how much of the player's closing speed carries into an incidental touch (0..1) — kept low so jogging past the ball doesn't launch it */
-  pushApproachTransfer: 0.4,
+  pushApproachTransfer: 0.25,
   /** distance at which the ball is considered "at the player's feet" */
-  controlRadius: 1.5,
-  /** where the dribbled ball sits ahead of the player */
-  dribbleDistance: 0.8,
+  controlRadius: 1.2,
+  /** where the dribbled ball sits ahead of the player — tight, genuinely at the feet, not a stride ahead */
+  dribbleDistance: 0.45,
   /** how strongly the dribble pulls the ball to that spot */
-  dribbleGrip: 10,
-  maxSpeed: 30,
+  dribbleGrip: 15,
+  maxSpeed: 24,
 } as const;
 
 /**
@@ -57,16 +57,16 @@ export const STRIKE_TUNING = {
   shotAssistMinAlignment: 0.55,
 
   shot: {
-    minSpeed: 11,
-    maxSpeed: 27,
+    minSpeed: 10,
+    maxSpeed: 22,
     /** vertical:horizontal ratio with the loft modifier held */
     loftRatio: 0.5,
     /** vertical:horizontal ratio for a driven shot */
     baseLoftRatio: 0.05,
   },
   pass: {
-    minSpeed: 7,
-    maxSpeed: 17,
+    minSpeed: 6,
+    maxSpeed: 15,
     loftRatio: 0.34,
     baseLoftRatio: 0,
   },

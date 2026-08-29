@@ -8,7 +8,7 @@ import { Player, PLAYER_HEIGHT } from "./Player";
 import { Ball } from "./Ball";
 import { PITCH_LENGTH } from "./pitchTexture";
 
-import { useKeyboardInput } from "../../hooks/useKeyboardInput";
+import { useKeyboardInput, LOCAL_P1_KEYS, LOCAL_P2_KEYS, SOLO_KEYS } from "../../hooks/useKeyboardInput";
 import {
   AWAY_DEFEND_SIDE,
   HOME_DEFEND_SIDE,
@@ -37,7 +37,11 @@ import {
   nearestChaserIndex,
   nearestToBallIndex,
   stepOutfield,
+  hasPossession,
+  dribbleTowardGoal,
+  aiShotDirection,
 } from "../../game/logic/ai/outfield";
+import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { detectGoal, isPlayFrozen, MATCH_TUNING, type TeamSide } from "../../game/logic/match";
 import {
   clearSpaceAroundRestart,
@@ -68,7 +72,18 @@ const IDLE_GUEST_INPUT: GuestInputPayload = {
 };
 
 export function MatchScene() {
-  const input = useKeyboardInput();
+  // Clubs, networking role and room are chosen on the menu before this
+  // component ever mounts, so a one-time read here (not a subscription) is
+  // enough — none of them change mid-match.
+  const { homeClubId, awayClubId, netRole, roomCode, difficulty } = useGameStore.getState();
+  const diff = DIFFICULTY_TUNING[difficulty];
+
+  // Local 2P reassigns P1 to WASD-only (arrows go to P2); every other mode
+  // keeps the original WASD-or-arrows single scheme. The P2 stream is
+  // always mounted (hooks can't be conditional) but only ever consumed
+  // when netRole is "local2p".
+  const input = useKeyboardInput(netRole === "local2p" ? LOCAL_P1_KEYS : SOLO_KEYS);
+  const input2 = useKeyboardInput(LOCAL_P2_KEYS);
   const { camera } = useThree();
 
   // --- mesh refs ---
@@ -82,10 +97,6 @@ export function MatchScene() {
   /** Ground ring under that same player. */
   const indicatorRingRef = useRef<THREE.Mesh>(null);
 
-  // Clubs, networking role and room are chosen on the menu before this
-  // component ever mounts, so a one-time read here (not a subscription) is
-  // enough — none of them change mid-match.
-  const { homeClubId, awayClubId, netRole, roomCode } = useGameStore.getState();
   const homeClub = getClub(homeClubId);
   const awayClub = getClub(awayClubId);
   const homeGKPlayer = playerAt(homeClub, "GK");
@@ -98,6 +109,13 @@ export function MatchScene() {
 
   const homeParams = useRef(homeXI.map((e) => paramsFromAttributes(e.player.attributes))).current;
   const awayParams = useRef(awayXI.map((e) => paramsFromAttributes(e.player.attributes))).current;
+  /** Per-player shot decision state, indexed like homeXI/awayXI — cooldown gates repeat shots; windup delays the strike itself for a cheap "reaction time" feel. */
+  const homeShotState = useRef(
+    homeXI.map(() => ({ cooldown: 0, windupUntil: 0, windupDir: null as { x: number; z: number } | null })),
+  ).current;
+  const awayShotState = useRef(
+    awayXI.map(() => ({ cooldown: 0, windupUntil: 0, windupDir: null as { x: number; z: number } | null })),
+  ).current;
   const homeGKParams = useRef(paramsFromAttributes(homeGKPlayer.attributes)).current;
   const awayGKParams = useRef(paramsFromAttributes(awayGKPlayer.attributes)).current;
 
@@ -180,6 +198,13 @@ export function MatchScene() {
     const data = group.userData as { kickCount?: number; tackleCount?: number };
     data[field] = (data[field] ?? 0) + 1;
   };
+
+  /** Scales an AI player's movement params by the difficulty's speed multiplier. Never applied to a human-controlled body. */
+  const scaleParams = (p: ReturnType<typeof paramsFromAttributes>) => ({
+    ...p,
+    accel: p.accel * diff.speedMult,
+    maxSpeed: p.maxSpeed * diff.speedMult,
+  });
 
   /** Drives the three.js camera for one frame in whichever mode is active. */
   const applyCamera = (
@@ -289,10 +314,10 @@ export function MatchScene() {
     }
     keyEdge.current.switchPlayer = keys.switchPlayer;
 
-    // --- player switch (away side: only the guest, relayed through the host) ---
+    // --- player switch (away side: guest or local P2) ---
     let awayControlledIndex = store.awayControlledIndex;
-    if (netRole === "host" && awayControlledIndex !== null) {
-      const guestKeys = guestInputRef.current;
+    if ((netRole === "host" || netRole === "local2p") && awayControlledIndex !== null) {
+      const guestKeys = netRole === "host" ? guestInputRef.current : input2.current;
       if (guestKeys.switchPlayer && !guestKeyEdge.current) {
         const next = nearestToBallIndex(store.awayOutfield, store.ball);
         if (next !== awayControlledIndex) {
@@ -326,7 +351,8 @@ export function MatchScene() {
             heading: 0,
             spin: 0,
           };
-          const hasAwayHumanNow = netRole === "host" && awayControlledIndex !== null;
+          const hasAwayHumanNow = (netRole === "host" || netRole === "local2p") && awayControlledIndex !== null;
+          const awayKeysNow = netRole === "host" ? guestInputRef.current : input2.current;
 
           const homeOutfield = store.homeOutfield.map((p, i) => {
             const params = homeParams[i] ?? homeParams[0]!;
@@ -339,7 +365,7 @@ export function MatchScene() {
           const awayOutfield = store.awayOutfield.map((p, i) => {
             const params = awayParams[i] ?? awayParams[0]!;
             if (hasAwayHumanNow && i === awayControlledIndex) {
-              return clampToPitch(stepMovement(p, guestInputRef.current, params, dt), PITCH.halfLength, PITCH.halfWidth);
+              return clampToPitch(stepMovement(p, awayKeysNow, params, dt), PITCH.halfLength, PITCH.halfWidth);
             }
             const ai = stepOutfield(p, awayXI[i]!.role, refBall, false);
             return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
@@ -423,6 +449,7 @@ export function MatchScene() {
           awayGK: nextAwayGK,
           lastTouch: team,
           restart: null,
+          restartLock: team,
           matchStatus: "playing",
           statusTimer: 0,
         });
@@ -478,15 +505,15 @@ export function MatchScene() {
     }
     keyEdge.current.tackle = keys.tackle;
 
-    // --- away controlled player (host only, once a guest is connected) ---
-    const hasAwayHuman = netRole === "host" && awayControlledIndex !== null;
+    // --- away controlled player (host's guest, or local player 2) ---
+    const hasAwayHuman = (netRole === "host" || netRole === "local2p") && awayControlledIndex !== null;
     const prevAwayCharge = store.awayCharge;
     let awayCharge = prevAwayCharge;
     let awayReleased = false;
     let awayControlled: Kinematics | null = null;
 
     if (hasAwayHuman) {
-      const guestKeys = guestInputRef.current;
+      const guestKeys = netRole === "host" ? guestInputRef.current : input2.current;
       awayCharge = stepCharge(prevAwayCharge, guestKeys, dt);
       awayReleased = prevAwayCharge.action !== null && awayCharge.action === null;
 
@@ -524,8 +551,11 @@ export function MatchScene() {
     let cooldown = Math.max(0, store.strikeCooldown - dt);
     let awayCooldown = Math.max(0, store.awayStrikeCooldown - dt);
     let lastTouch: TeamSide = store.lastTouch;
+    // While set, only this team may touch (and therefore strike) the ball —
+    // see the dead-ball restart placement above for why.
+    let restartLock: TeamSide | null = store.restartLock;
 
-    if (released && canStrike(controlled, ball)) {
+    if (released && canStrike(controlled, ball) && (restartLock === null || restartLock === "home")) {
       // Shots get a light on-target nudge toward goal centre; passing has no
       // teammate-lock-on target yet, so it's pure facing direction.
       const goalTarget =
@@ -534,49 +564,72 @@ export function MatchScene() {
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
       lastTouch = "home";
+      restartLock = null;
       playKick(prevCharge.power);
       bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
     }
 
-    if (awayControlled && awayReleased && canStrike(awayControlled, ball)) {
+    if (
+      awayControlled &&
+      awayReleased &&
+      canStrike(awayControlled, ball) &&
+      (restartLock === null || restartLock === "away")
+    ) {
       const goalTarget =
         prevAwayCharge.action === "shoot" ? { x: -AWAY_DEFEND_SIDE * PITCH.halfLength, z: 0 } : undefined;
       const strike = resolveStrike(awayControlled, prevAwayCharge, goalTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       awayCooldown = STRIKE_TUNING.cooldown;
       lastTouch = "away";
+      restartLock = null;
       playKick(prevAwayCharge.power);
       bumpAnim(awayRefs.current[awayControlledIndex ?? 0] ?? null, "kickCount");
     }
 
     // --- ball (dribble capture is suppressed right after a strike) ---
-    if (cooldown <= 0) {
+    // While a restart lock is set, only the team it was awarded to may
+    // touch the ball — that's what makes "the taking side actually starts
+    // the play" mean something instead of it just being a loose ball
+    // anyone nearby can grab.
+    if (cooldown <= 0 && (restartLock === null || restartLock === "home")) {
       const before = ball;
       ball = resolvePlayerBall(ball, controlled, PLAYER_RADIUS, dt);
-      if (ball !== before) lastTouch = "home";
+      if (ball !== before) {
+        lastTouch = "home";
+        restartLock = null;
+      }
     }
-    if (awayControlled && awayCooldown <= 0) {
+    if (awayControlled && awayCooldown <= 0 && (restartLock === null || restartLock === "away")) {
       const before = ball;
       ball = resolvePlayerBall(ball, awayControlled, PLAYER_RADIUS, dt);
-      if (ball !== before) lastTouch = "away";
+      if (ball !== before) {
+        lastTouch = "away";
+        restartLock = null;
+      }
     }
     ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
     // --- tackle resolution: a connecting tackle overrides ordinary contact this frame ---
-    if (tackleState.current.active > 0) {
+    if (tackleState.current.active > 0 && (restartLock === null || restartLock === "home")) {
       const knocked = attemptTackleImpulse(ball, controlled.position);
       if (knocked) {
         ball = knocked;
         lastTouch = "home";
+        restartLock = null;
         tackleState.current.active = 0;
         playKick(0.55);
       }
     }
-    if (awayControlled && awayTackleState.current.active > 0) {
+    if (
+      awayControlled &&
+      awayTackleState.current.active > 0 &&
+      (restartLock === null || restartLock === "away")
+    ) {
       const knocked = attemptTackleImpulse(ball, awayControlled.position);
       if (knocked) {
         ball = knocked;
         lastTouch = "away";
+        restartLock = null;
         awayTackleState.current.active = 0;
         playKick(0.55);
       }
@@ -605,37 +658,136 @@ export function MatchScene() {
     // --- home outfield (AI teammates + the controlled player) ---
     const homeChaser = nearestChaserIndex(store.homeOutfield, ball, chaserRef.current.home);
     chaserRef.current.home = homeChaser;
+    const homeGoalX = -HOME_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — home attacks here
     const homeOutfield = store.homeOutfield.map((p, i) => {
       if (i === controlledIndex) return controlled;
-      const ai = stepOutfield(p, homeXI[i]!.role, ball, i === homeChaser);
-      const params = homeParams[i] ?? homeParams[0]!;
+
+      const shotState = homeShotState[i]!;
+      shotState.cooldown = Math.max(0, shotState.cooldown - dt);
+
+      // Mid wind-up takes priority over everything else — finish the motion
+      // before making any new decision, so a shot always actually fires.
+      if (shotState.windupUntil > 0) {
+        if (state.clock.elapsedTime >= shotState.windupUntil) {
+          if (restartLock === null || restartLock === "home") {
+            const dir = shotState.windupDir ?? aiShotDirection(p, homeGoalX, diff.shotAccuracy);
+            ball = applyImpulse(ball, dir, diff.shotPower, 0.12);
+            lastTouch = "home";
+            restartLock = null;
+            bumpAnim(homeRefs.current[i] ?? null, "kickCount");
+            playKick(0.6);
+          }
+          shotState.cooldown = diff.decisionCooldown;
+          shotState.windupUntil = 0;
+          shotState.windupDir = null;
+        }
+        return clampToPitch(
+          stepMovement(p, { x: 0, z: 0, sprint: false }, homeParams[i] ?? homeParams[0]!, dt),
+          PITCH.halfLength,
+          PITCH.halfWidth,
+        );
+      }
+
+      const isChaserNow = i === homeChaser;
+      if (isChaserNow && hasPossession(p, ball) && (restartLock === null || restartLock === "home")) {
+        const distToGoal = Math.hypot(homeGoalX - p.position.x, p.position.z);
+        if (shotState.cooldown <= 0 && distToGoal < diff.shootRange) {
+          // Decide now, strike after a short wind-up — a cheap stand-in for
+          // reaction time that also gives the shot a readable animation beat.
+          shotState.windupUntil = state.clock.elapsedTime + diff.shotWindup;
+          shotState.windupDir = aiShotDirection(p, homeGoalX, diff.shotAccuracy);
+          return clampToPitch(
+            stepMovement(p, { x: 0, z: 0, sprint: false }, homeParams[i] ?? homeParams[0]!, dt),
+            PITCH.halfLength,
+            PITCH.halfWidth,
+          );
+        }
+        const ai = dribbleTowardGoal(p, ball, homeGoalX, diff.dribbleBias);
+        const params = scaleParams(homeParams[i] ?? homeParams[0]!);
+        return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
+      }
+
+      const ai = stepOutfield(p, homeXI[i]!.role, ball, isChaserNow);
+      const params = scaleParams(homeParams[i] ?? homeParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
-    // --- away outfield (AI, except a connected guest's player) ---
+    // --- away outfield (AI, except a connected guest's/local P2's player) ---
     const awayChaser = nearestChaserIndex(store.awayOutfield, ball, chaserRef.current.away);
     chaserRef.current.away = awayChaser;
+    const awayGoalX = -AWAY_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — away attacks here
     const awayOutfield = store.awayOutfield.map((p, i) => {
       if (hasAwayHuman && i === awayControlledIndex && awayControlled) return awayControlled;
-      const ai = stepOutfield(p, awayXI[i]!.role, ball, i === awayChaser);
-      const params = awayParams[i] ?? awayParams[0]!;
+
+      const shotState = awayShotState[i]!;
+      shotState.cooldown = Math.max(0, shotState.cooldown - dt);
+
+      if (shotState.windupUntil > 0) {
+        if (state.clock.elapsedTime >= shotState.windupUntil) {
+          if (restartLock === null || restartLock === "away") {
+            const dir = shotState.windupDir ?? aiShotDirection(p, awayGoalX, diff.shotAccuracy);
+            ball = applyImpulse(ball, dir, diff.shotPower, 0.12);
+            lastTouch = "away";
+            restartLock = null;
+            bumpAnim(awayRefs.current[i] ?? null, "kickCount");
+            playKick(0.6);
+          }
+          shotState.cooldown = diff.decisionCooldown;
+          shotState.windupUntil = 0;
+          shotState.windupDir = null;
+        }
+        return clampToPitch(
+          stepMovement(p, { x: 0, z: 0, sprint: false }, awayParams[i] ?? awayParams[0]!, dt),
+          PITCH.halfLength,
+          PITCH.halfWidth,
+        );
+      }
+
+      const isChaserNow = i === awayChaser;
+      if (isChaserNow && hasPossession(p, ball) && (restartLock === null || restartLock === "away")) {
+        const distToGoal = Math.hypot(awayGoalX - p.position.x, p.position.z);
+        if (shotState.cooldown <= 0 && distToGoal < diff.shootRange) {
+          shotState.windupUntil = state.clock.elapsedTime + diff.shotWindup;
+          shotState.windupDir = aiShotDirection(p, awayGoalX, diff.shotAccuracy);
+          return clampToPitch(
+            stepMovement(p, { x: 0, z: 0, sprint: false }, awayParams[i] ?? awayParams[0]!, dt),
+            PITCH.halfLength,
+            PITCH.halfWidth,
+          );
+        }
+        const ai = dribbleTowardGoal(p, ball, awayGoalX, diff.dribbleBias);
+        const params = scaleParams(awayParams[i] ?? awayParams[0]!);
+        return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
+      }
+
+      const ai = stepOutfield(p, awayXI[i]!.role, ball, isChaserNow);
+      const params = scaleParams(awayParams[i] ?? awayParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
-    // Everyone but the two controlled players only shoves the ball via body
-    // contact (no intentional dribble pull) — a simplified stand-in for
-    // teammates/opponents winning or deflecting a loose ball.
+    // Everyone but the two controlled players (and anyone locked out by an
+    // active restart) only shoves the ball via body contact (no intentional
+    // dribble pull) — a simplified stand-in for teammates/opponents winning
+    // or deflecting a loose ball.
     for (let i = 0; i < homeOutfield.length; i++) {
       if (i === controlledIndex) continue;
+      if (restartLock !== null && restartLock !== "home") continue;
       const before = ball;
       ball = resolvePlayerBall(ball, homeOutfield[i]!, PLAYER_RADIUS, dt);
-      if (ball !== before) lastTouch = "home";
+      if (ball !== before) {
+        lastTouch = "home";
+        restartLock = null;
+      }
     }
     for (let i = 0; i < awayOutfield.length; i++) {
       if (hasAwayHuman && i === awayControlledIndex) continue;
+      if (restartLock !== null && restartLock !== "away") continue;
       const before = ball;
       ball = resolvePlayerBall(ball, awayOutfield[i]!, PLAYER_RADIUS, dt);
-      if (ball !== before) lastTouch = "away";
+      if (ball !== before) {
+        lastTouch = "away";
+        restartLock = null;
+      }
     }
 
     // --- goal detection, dead-ball restarts & period end ---
@@ -655,6 +807,7 @@ export function MatchScene() {
         awayStrikeCooldown: awayCooldown,
         matchTime,
         lastTouch,
+        restartLock: null,
       });
       useGameStore.getState().recordGoal(goal.scorer);
       playWhistle();
@@ -681,6 +834,7 @@ export function MatchScene() {
         matchTime,
         lastTouch,
         restart: outOfBounds,
+        restartLock: null,
         matchStatus: "restart",
         statusTimer: MATCH_TUNING.restartPause,
       });
@@ -714,6 +868,7 @@ export function MatchScene() {
       awayCharge,
       awayStrikeCooldown: awayCooldown,
       lastTouch,
+      restartLock,
     });
 
     syncMeshes({ homeOutfield, homeGK, homeGKState, awayOutfield, awayGK, awayGKState, ball }, dt);
