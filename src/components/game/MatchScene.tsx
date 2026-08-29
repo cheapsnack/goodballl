@@ -4,7 +4,7 @@ import * as THREE from "three";
 
 import { Pitch } from "./Pitch";
 import { Goal } from "./Goal";
-import { Player } from "./Player";
+import { Player, PLAYER_HEIGHT } from "./Player";
 import { Ball } from "./Ball";
 import { PITCH_LENGTH } from "./pitchTexture";
 
@@ -39,13 +39,20 @@ import {
   stepOutfield,
 } from "../../game/logic/ai/outfield";
 import { detectGoal, isPlayFrozen, MATCH_TUNING, type TeamSide } from "../../game/logic/match";
-import { detectOutOfBounds } from "../../game/logic/restarts";
+import {
+  clearSpaceAroundRestart,
+  detectOutOfBounds,
+  headingTo,
+  RESTART_CLEARANCE,
+} from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
 import { getClub, playerAt } from "../../game/data/clubs";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
 import type { GuestInputPayload } from "../../multiplayer/types";
 import type { BallState, Kinematics, MovementInput } from "../../game/types";
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 const IDLE_GUEST_INPUT: GuestInputPayload = {
   x: 0,
@@ -68,6 +75,8 @@ export function MatchScene() {
   const homeRefs = useRef<(THREE.Group | null)[]>([]);
   const awayRefs = useRef<(THREE.Group | null)[]>([]);
   const ballRef = useRef<THREE.Group>(null);
+  /** Floating marker above whichever player this screen currently controls. */
+  const indicatorRef = useRef<THREE.Group>(null);
 
   // Clubs, networking role and room are chosen on the menu before this
   // component ever mounts, so a one-time read here (not a subscription) is
@@ -141,6 +150,14 @@ export function MatchScene() {
     );
   };
 
+  /** Floats the "you are here" marker above whichever player this screen controls. */
+  const placeIndicator = (pos: { x: number; z: number }, elapsed: number) => {
+    if (!indicatorRef.current) return;
+    const bob = Math.sin(elapsed * 4) * 0.12;
+    indicatorRef.current.position.set(pos.x, PLAYER_HEIGHT + 0.55 + bob, pos.z);
+    indicatorRef.current.rotation.y = elapsed * 2;
+  };
+
   /** Drives the three.js camera for one frame in whichever mode is active. */
   const applyCamera = (
     mode: CameraMode,
@@ -204,7 +221,7 @@ export function MatchScene() {
     }
   };
 
-  useFrame((_, rawDelta) => {
+  useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const store = useGameStore.getState();
     const keys = input.current;
@@ -233,6 +250,7 @@ export function MatchScene() {
         dt,
       );
       syncMeshes(s, dt);
+      placeIndicator(controlled.position, state.clock.elapsedTime);
       return;
     }
 
@@ -281,17 +299,68 @@ export function MatchScene() {
         });
       } else if (store.matchStatus === "restart" && store.restart) {
         // Drop the ball at the throw-in/corner/goal-kick spot and go live —
-        // whoever gets there first (human or AI) plays it, same as a loose ball.
-        const spot = store.restart.position;
+        // clearing the non-taking side back gives it a clean restart instead
+        // of an instant, ball-hugging challenge right on the boundary.
+        const { type, team, position: spot } = store.restart;
         const placedBall: BallState = {
           position: { x: spot.x, y: BALL_RADIUS, z: spot.z },
           velocity: { x: 0, y: 0, z: 0 },
           heading: 0,
           spin: 0,
         };
+
+        const minDist = RESTART_CLEARANCE[type];
+        let nextHomeOutfield = store.homeOutfield;
+        let nextAwayOutfield = store.awayOutfield;
+        if (team === "home") {
+          nextAwayOutfield = clearSpaceAroundRestart(nextAwayOutfield, spot, minDist);
+        } else {
+          nextHomeOutfield = clearSpaceAroundRestart(nextHomeOutfield, spot, minDist);
+        }
+
+        let nextHomeGK = store.homeGK;
+        let nextAwayGK = store.awayGK;
+
+        if (type === "goalkick") {
+          // The goalkeeper takes it — put them on the spot facing upfield.
+          const gkBody: Kinematics = {
+            position: { x: spot.x, y: 0, z: spot.z },
+            velocity: { x: 0, y: 0, z: 0 },
+            heading: headingTo(spot, { x: 0, z: 0 }),
+          };
+          if (team === "home") nextHomeGK = gkBody;
+          else nextAwayGK = gkBody;
+        } else {
+          // Throw-in / corner: bring the taking side's controlled player to
+          // the spot so whoever's playing doesn't have to sprint over first.
+          const setback = type === "corner" ? 1.4 : 1;
+          const towardCentre = { x: spot.x > 0 ? -1 : 1, z: spot.z > 0 ? -1 : 1 };
+          const takerPos = {
+            x: clamp(spot.x + towardCentre.x * setback, -PITCH.halfLength + 1, PITCH.halfLength - 1),
+            z: clamp(spot.z + towardCentre.z * setback, -PITCH.halfWidth + 1, PITCH.halfWidth - 1),
+          };
+          const takerBody: Kinematics = {
+            position: { x: takerPos.x, y: 0, z: takerPos.z },
+            velocity: { x: 0, y: 0, z: 0 },
+            heading: headingTo(takerPos, spot),
+          };
+          if (team === "home") {
+            nextHomeOutfield = nextHomeOutfield.map((p, i) =>
+              i === store.controlledIndex ? takerBody : p,
+            );
+          } else if (store.awayControlledIndex !== null) {
+            const idx = store.awayControlledIndex;
+            nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? takerBody : p));
+          }
+        }
+
         useGameStore.setState({
           ball: placedBall,
-          lastTouch: store.restart.team,
+          homeOutfield: nextHomeOutfield,
+          awayOutfield: nextAwayOutfield,
+          homeGK: nextHomeGK,
+          awayGK: nextAwayGK,
+          lastTouch: team,
           restart: null,
           matchStatus: "playing",
           statusTimer: 0,
@@ -311,6 +380,7 @@ export function MatchScene() {
       const controlled = s2.homeOutfield[s2.controlledIndex] ?? s2.homeOutfield[0]!;
       applyCamera(cameraMode, s2.ball.position, { x: 0, y: 0, z: 0 }, controlled.position, controlled.heading, dt);
       syncMeshes(s2, 0);
+      placeIndicator(controlled.position, state.clock.elapsedTime);
       maybeBroadcastState();
       return;
     }
@@ -537,6 +607,7 @@ export function MatchScene() {
 
     // --- camera ---
     applyCamera(cameraMode, ball.position, ball.velocity, controlled.position, controlled.heading, dt);
+    placeIndicator(controlled.position, state.clock.elapsedTime);
     maybeBroadcastState();
   });
 
@@ -572,6 +643,14 @@ export function MatchScene() {
       ))}
 
       <Ball ref={ballRef} />
+
+      {/* Marker over whichever player this screen currently controls. */}
+      <group ref={indicatorRef}>
+        <mesh rotation-x={Math.PI}>
+          <coneGeometry args={[0.22, 0.4, 4]} />
+          <meshStandardMaterial color="#fff45c" emissive="#fff45c" emissiveIntensity={0.7} />
+        </mesh>
+      </group>
     </>
   );
 }
