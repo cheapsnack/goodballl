@@ -74,6 +74,9 @@ type GameState = {
   charge: ChargeState;
   /** seconds remaining before the player can re-capture the ball */
   strikeCooldown: number;
+  /** the guest-controlled away player's charge, mirrored from their input */
+  awayCharge: ChargeState;
+  awayStrikeCooldown: number;
 
   /** --- match state (HUD-facing, updated at most a few times a second) --- */
   score: Score;
@@ -144,6 +147,8 @@ const kickoffBodies = (homeClubId: string, awayClubId: string, netRole: NetRole 
     awayGKState: initialKeeperState(),
     charge: IDLE_CHARGE,
     strikeCooldown: 0,
+    awayCharge: IDLE_CHARGE,
+    awayStrikeCooldown: 0,
     restart: null,
   };
 };
