@@ -63,6 +63,8 @@ export type ActionInput = {
   cameraToggle: boolean;
   /** Switch-player key, held state — the consumer edge-detects the press. */
   switchPlayer: boolean;
+  /** Slide-tackle key, held state — the consumer edge-detects the press. */
+  tackle: boolean;
 };
 
 /** Everything the input hook produces in one frame. */
