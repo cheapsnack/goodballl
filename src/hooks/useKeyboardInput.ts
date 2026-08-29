@@ -18,6 +18,7 @@ const KEYS: Record<string, string> = {
   ControlRight: "loft",
   KeyC: "cameraToggle",
   KeyQ: "switchPlayer",
+  KeyF: "tackle",
 };
 
 /**
