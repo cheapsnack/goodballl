@@ -21,6 +21,8 @@ export function ControlsHint() {
       <Key>C</Key> camera
       <Sep />
       <Key>Q</Key> switch player
+      <Sep />
+      <Key>F</Key> tackle
     </div>
   );
 }

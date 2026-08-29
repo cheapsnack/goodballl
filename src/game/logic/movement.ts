@@ -21,8 +21,8 @@ export type MovementParams = {
 export const MOVEMENT_TUNING = {
   baseAccel: 22,
   paceAccelRange: 14,
-  baseSpeed: 7.2,
-  paceSpeedRange: 5.0,
+  baseSpeed: 7.6,
+  paceSpeedRange: 5.4,
   sprintMult: 1.42,
   friction: 5.2,
   baseTurnRate: 5.0,

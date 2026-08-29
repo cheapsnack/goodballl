@@ -46,6 +46,7 @@ import {
   RESTART_CLEARANCE,
 } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
+import { attemptTackleImpulse, tackleDash, TACKLE_TUNING } from "../../game/logic/tackle";
 import { getClub, playerAt } from "../../game/data/clubs";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
@@ -63,6 +64,7 @@ const IDLE_GUEST_INPUT: GuestInputPayload = {
   loft: false,
   cameraToggle: false,
   switchPlayer: false,
+  tackle: false,
 };
 
 export function MatchScene() {
@@ -77,6 +79,8 @@ export function MatchScene() {
   const ballRef = useRef<THREE.Group>(null);
   /** Floating marker above whichever player this screen currently controls. */
   const indicatorRef = useRef<THREE.Group>(null);
+  /** Ground ring under that same player. */
+  const indicatorRingRef = useRef<THREE.Mesh>(null);
 
   // Clubs, networking role and room are chosen on the menu before this
   // component ever mounts, so a one-time read here (not a subscription) is
@@ -104,9 +108,15 @@ export function MatchScene() {
   /** Sticky chaser index per team so players don't flicker who's pressing. */
   const chaserRef = useRef({ home: -1, away: -1 });
   /** Edge-detects held-boolean keys (camera toggle, player switch). */
-  const keyEdge = useRef({ camera: false, switchPlayer: false });
+  const keyEdge = useRef({ camera: false, switchPlayer: false, tackle: false });
   /** Host-side: edge-detects the guest's switch-player key from the network stream. */
   const guestKeyEdge = useRef(false);
+  /** Host-side: edge-detects the guest's tackle key from the network stream. */
+  const guestTackleKeyEdge = useRef(false);
+  /** Home controlled player's tackle cooldown / active-contact window. */
+  const tackleState = useRef({ cooldown: 0, active: 0 });
+  /** Away controlled player's (guest's) tackle cooldown / active-contact window. */
+  const awayTackleState = useRef({ cooldown: 0, active: 0 });
   /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
@@ -152,10 +162,16 @@ export function MatchScene() {
 
   /** Floats the "you are here" marker above whichever player this screen controls. */
   const placeIndicator = (pos: { x: number; z: number }, elapsed: number) => {
-    if (!indicatorRef.current) return;
-    const bob = Math.sin(elapsed * 4) * 0.12;
-    indicatorRef.current.position.set(pos.x, PLAYER_HEIGHT + 0.55 + bob, pos.z);
-    indicatorRef.current.rotation.y = elapsed * 2;
+    if (indicatorRef.current) {
+      const bob = Math.sin(elapsed * 4) * 0.12;
+      indicatorRef.current.position.set(pos.x, PLAYER_HEIGHT + 0.55 + bob, pos.z);
+      indicatorRef.current.rotation.y = elapsed * 2;
+    }
+    if (indicatorRingRef.current) {
+      indicatorRingRef.current.position.set(pos.x, 0.03, pos.z);
+      const pulse = 1 + Math.sin(elapsed * 4) * 0.08;
+      indicatorRingRef.current.scale.set(pulse, pulse, 1);
+    }
   };
 
   /** Drives the three.js camera for one frame in whichever mode is active. */
@@ -287,7 +303,42 @@ export function MatchScene() {
       if (store.matchStatus === "fulltime") {
         // Match over: hold everything.
       } else if (remaining > 0) {
-        useGameStore.setState({ statusTimer: remaining });
+        if (store.matchStatus === "restart" && store.restart) {
+          // Keep everyone moving into position during the restart countdown
+          // instead of freezing solid — real players don't stand like
+          // statues waiting for a throw-in. The ball itself stays put; only
+          // outfield bodies drift toward a sensible shape around where the
+          // restart will actually happen.
+          const spot = store.restart.position;
+          const refBall: BallState = {
+            position: { x: spot.x, y: BALL_RADIUS, z: spot.z },
+            velocity: { x: 0, y: 0, z: 0 },
+            heading: 0,
+            spin: 0,
+          };
+          const hasAwayHumanNow = netRole === "host" && awayControlledIndex !== null;
+
+          const homeOutfield = store.homeOutfield.map((p, i) => {
+            const params = homeParams[i] ?? homeParams[0]!;
+            if (i === controlledIndex) {
+              return clampToPitch(stepMovement(p, keys, params, dt), PITCH.halfLength, PITCH.halfWidth);
+            }
+            const ai = stepOutfield(p, homeXI[i]!.role, refBall, false);
+            return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
+          });
+          const awayOutfield = store.awayOutfield.map((p, i) => {
+            const params = awayParams[i] ?? awayParams[0]!;
+            if (hasAwayHumanNow && i === awayControlledIndex) {
+              return clampToPitch(stepMovement(p, guestInputRef.current, params, dt), PITCH.halfLength, PITCH.halfWidth);
+            }
+            const ai = stepOutfield(p, awayXI[i]!.role, refBall, false);
+            return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
+          });
+
+          useGameStore.setState({ statusTimer: remaining, homeOutfield, awayOutfield });
+        } else {
+          useGameStore.setState({ statusTimer: remaining });
+        }
       } else if (store.matchStatus === "kickoff") {
         playWhistle(); // kickoff whistle as play resumes
         useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
@@ -402,6 +453,20 @@ export function MatchScene() {
     let controlled = stepMovement(controlledBefore, move, controlledParams, dt);
     controlled = clampToPitch(controlled, PITCH.halfLength, PITCH.halfWidth);
 
+    // --- tackle: home controlled player (one-shot dash, not a hold) ---
+    tackleState.current.cooldown = Math.max(0, tackleState.current.cooldown - dt);
+    tackleState.current.active = Math.max(0, tackleState.current.active - dt);
+    if (keys.tackle && !keyEdge.current.tackle && tackleState.current.cooldown <= 0) {
+      const dash = tackleDash(controlled.heading);
+      controlled = {
+        ...controlled,
+        velocity: { x: controlled.velocity.x + dash.x, y: 0, z: controlled.velocity.z + dash.z },
+      };
+      tackleState.current.cooldown = TACKLE_TUNING.cooldown;
+      tackleState.current.active = TACKLE_TUNING.activeWindow;
+    }
+    keyEdge.current.tackle = keys.tackle;
+
     // --- away controlled player (host only, once a guest is connected) ---
     const hasAwayHuman = netRole === "host" && awayControlledIndex !== null;
     const prevAwayCharge = store.awayCharge;
@@ -426,6 +491,20 @@ export function MatchScene() {
         PITCH.halfLength,
         PITCH.halfWidth,
       );
+
+      // --- tackle: away controlled player (guest), relayed through the host ---
+      awayTackleState.current.cooldown = Math.max(0, awayTackleState.current.cooldown - dt);
+      awayTackleState.current.active = Math.max(0, awayTackleState.current.active - dt);
+      if (guestKeys.tackle && !guestTackleKeyEdge.current && awayTackleState.current.cooldown <= 0) {
+        const dash = tackleDash(awayControlled.heading);
+        awayControlled = {
+          ...awayControlled,
+          velocity: { x: awayControlled.velocity.x + dash.x, y: 0, z: awayControlled.velocity.z + dash.z },
+        };
+        awayTackleState.current.cooldown = TACKLE_TUNING.cooldown;
+        awayTackleState.current.active = TACKLE_TUNING.activeWindow;
+      }
+      guestTackleKeyEdge.current = guestKeys.tackle;
     }
 
     // --- strikes ---
@@ -468,6 +547,26 @@ export function MatchScene() {
       if (ball !== before) lastTouch = "away";
     }
     ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
+
+    // --- tackle resolution: a connecting tackle overrides ordinary contact this frame ---
+    if (tackleState.current.active > 0) {
+      const knocked = attemptTackleImpulse(ball, controlled.position);
+      if (knocked) {
+        ball = knocked;
+        lastTouch = "home";
+        tackleState.current.active = 0;
+        playKick(0.55);
+      }
+    }
+    if (awayControlled && awayTackleState.current.active > 0) {
+      const knocked = attemptTackleImpulse(ball, awayControlled.position);
+      if (knocked) {
+        ball = knocked;
+        lastTouch = "away";
+        awayTackleState.current.active = 0;
+        playKick(0.55);
+      }
+    }
 
     // --- home goalkeeper ---
     const homeDecision = stepGoalkeeper(store.homeGK, store.homeGKState, ball, HOME_DEFEND_SIDE, dt);
@@ -651,6 +750,11 @@ export function MatchScene() {
           <meshStandardMaterial color="#fff45c" emissive="#fff45c" emissiveIntensity={0.7} />
         </mesh>
       </group>
+      {/* Ground ring under the same player — visible even when the camera looks straight down. */}
+      <mesh ref={indicatorRingRef} rotation-x={-Math.PI / 2}>
+        <ringGeometry args={[0.62, 0.78, 28]} />
+        <meshBasicMaterial color="#fff45c" transparent opacity={0.85} side={THREE.DoubleSide} />
+      </mesh>
     </>
   );
 }

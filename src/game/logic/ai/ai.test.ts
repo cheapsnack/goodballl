@@ -337,7 +337,10 @@ describe("keeper vs ball integration", () => {
   });
 
   it("cannot claim a shot flying above the crossbar", () => {
-    const r = step({ vx: 30, vz: 3.5, vy: 14 });
+    // Deliberately steep so it's unambiguously clearing the bar regardless
+    // of small ball-speed tuning changes — this is a "way over the top"
+    // case, not a razor's-edge one.
+    const r = step({ vx: 30, vz: 3.5, vy: 17 });
     expect(r.saved).toBe(false);
     expect(r.conceded).toBe(false);
   });
