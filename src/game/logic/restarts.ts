@@ -1,4 +1,4 @@
-import type { BallState } from "../types";
+import type { BallState, Kinematics } from "../types";
 import { BALL_RADIUS } from "./ballPhysics";
 import { FIELD, cornerSpot, goalKickSpot, throwInSpot } from "./field";
 import { scorerForGoalLine, type TeamSide } from "./match";
@@ -68,4 +68,54 @@ export function restartLabel(type: RestartType): string {
   if (type === "throwin") return "Throw-in";
   if (type === "corner") return "Corner";
   return "Goal Kick";
+}
+
+/**
+ * How far the *non-taking* side must be from the restart spot before play
+ * resumes — loosely modelled on real distances (corners are the strictest:
+ * defenders have to retreat well clear of the arc). Without this, whoever
+ * chased the ball out is often still standing right on top of the restart
+ * spot, which both looks wrong and was the main reason restarts kept
+ * immediately going back out — an "opponent" contesting the ball the
+ * instant it's placed, right next to the boundary, tends to shove it
+ * straight back over.
+ */
+export const RESTART_CLEARANCE: Record<RestartType, number> = {
+  throwin: 3,
+  corner: 8,
+  goalkick: 6,
+};
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Faces `from` roughly toward `to`, in the game's heading convention. */
+export function headingTo(from: { x: number; z: number }, to: { x: number; z: number }): number {
+  return Math.atan2(to.x - from.x, -(to.z - from.z));
+}
+
+/**
+ * Pushes any body within `minDist` of the restart spot straight back out to
+ * exactly that distance (radially, away from the spot), so the restart
+ * isn't instantly crowded. Pure.
+ */
+export function clearSpaceAroundRestart(
+  bodies: Kinematics[],
+  spot: { x: number; z: number },
+  minDist: number,
+): Kinematics[] {
+  return bodies.map((b) => {
+    const dx = b.position.x - spot.x;
+    const dz = b.position.z - spot.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist >= minDist) return b;
+    // Arbitrary but stable fallback direction if they're exactly on the spot.
+    const nx = dist < 1e-3 ? 0 : dx / dist;
+    const nz = dist < 1e-3 ? 1 : dz / dist;
+    const position = {
+      x: clamp(spot.x + nx * minDist, -FIELD.halfLength + 1, FIELD.halfLength - 1),
+      y: 0,
+      z: clamp(spot.z + nz * minDist, -FIELD.halfWidth + 1, FIELD.halfWidth - 1),
+    };
+    return { position, velocity: { x: 0, y: 0, z: 0 }, heading: b.heading };
+  });
 }
