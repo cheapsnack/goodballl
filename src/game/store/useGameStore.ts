@@ -9,7 +9,6 @@ import { buildOutfield, defaultControlledIndex } from "../logic/ai/outfield";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
-import type { NetRole } from "../../multiplayer/types";
 
 export const PITCH = {
   length: FIELD.length,
@@ -25,6 +24,16 @@ export const HOME_DEFEND_SIDE = -1 as const;
 export const AWAY_DEFEND_SIDE = 1 as const;
 /** Kept for anything that still refers to the old single-opponent naming. */
 export const DEFENDING_SIDE = AWAY_DEFEND_SIDE;
+
+/**
+ * Who's driving this browser's simulation:
+ *  - "local": single-player, this browser runs the whole match (vs AI).
+ *  - "host": a Play-vs-Friend match this browser is authoritative for —
+ *    it runs the full simulation and broadcasts state to the guest.
+ *  - "guest": a Play-vs-Friend match this browser only renders — it sends
+ *    its input to the host and applies whatever state the host broadcasts.
+ */
+export type NetRole = "local" | "host" | "guest";
 
 const body = (x: number, z: number, heading = 0): Kinematics => ({
   position: { x, y: 0, z },
@@ -59,22 +68,23 @@ type GameState = {
   homeOutfield: Kinematics[];
   homeGK: Kinematics;
   homeGKState: KeeperState;
-  /** Index into homeOutfield the human currently controls. */
+  /** Index into homeOutfield the local human (or, in a networked match, the host) controls. */
   controlledIndex: number;
 
-  /** Away side: fully AI-controlled. */
+  /** Away side. AI-controlled unless a guest is connected in a networked match. */
   awayOutfield: Kinematics[];
   awayGK: Kinematics;
   awayGKState: KeeperState;
+  /** Index into awayOutfield the guest controls, or null when it's fully AI. */
+  awayControlledIndex: number | null;
 
   /**
-   * Strike state. `charge` keeps a stable reference while idle so the power
-   * bar only re-renders during an actual charge.
+   * Strike state, one per controllable side. `charge` keeps a stable
+   * reference while idle so the power bar only re-renders during an actual
+   * charge.
    */
   charge: ChargeState;
-  /** seconds remaining before the player can re-capture the ball */
   strikeCooldown: number;
-  /** the guest-controlled away player's charge, mirrored from their input */
   awayCharge: ChargeState;
   awayStrikeCooldown: number;
 
@@ -98,14 +108,10 @@ type GameState = {
   homeClubId: string;
   awayClubId: string;
 
-  /** --- networking (Play vs Friend) --- */
+  /** --- Play-vs-Friend networking --- */
   netRole: NetRole;
-  /** shared room code; null for a local match */
   roomCode: string | null;
-  /** database row id for the room; null for a local match */
   roomId: string | null;
-  /** which away outfield player the guest controls; null when the away side is fully AI */
-  awayControlledIndex: number | null;
 
   setInput: (i: MovementInput) => void;
   setCameraMode: (m: CameraMode) => void;
@@ -116,35 +122,31 @@ type GameState = {
   recordGoal: (scorer: TeamSide) => void;
   /** Sets which clubs are playing. Call before kickoff, from the menu. */
   setClubs: (homeClubId: string, awayClubId: string) => void;
-  /** Sets the networking role and room for this match. Call before kickoff. */
-  setNetRoom: (netRole: NetRole, roomCode: string | null, roomId: string | null) => void;
+  /** Sets the networking role and room identity for a Play-vs-Friend match. Call before kickoff. */
+  setNetRoom: (role: NetRole, roomCode: string | null, roomId: string | null) => void;
   /** Puts bodies back to kickoff shape without touching score or clock. */
   resetPositions: () => void;
   resetMatch: () => void;
 };
 
 /** Builds fresh kickoff bodies for both full XIs, given the two clubs playing. */
-const kickoffBodies = (homeClubId: string, awayClubId: string, netRole: NetRole = "local") => {
+const kickoffBodies = (homeClubId: string, awayClubId: string, networked: boolean) => {
   const homeClub = getClub(homeClubId);
   const awayClub = getClub(awayClubId);
 
   const homeXI = buildOutfield(homeClub, HOME_DEFEND_SIDE);
   const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE);
 
-  const defaultControlled = defaultControlledIndex(homeXI);
-
   return {
     ball: initialBall(),
     homeOutfield: homeXI.map((e) => e.body),
     homeGK: initialGK(HOME_DEFEND_SIDE),
     homeGKState: initialKeeperState(),
-    controlledIndex: defaultControlled,
-    // Only a networked match hands an away player to a human; otherwise the
-    // whole away XI stays AI-driven.
-    awayControlledIndex: netRole === "local" ? null : defaultControlledIndex(awayXI),
+    controlledIndex: defaultControlledIndex(homeXI),
     awayOutfield: awayXI.map((e) => e.body),
     awayGK: initialGK(AWAY_DEFEND_SIDE),
     awayGKState: initialKeeperState(),
+    awayControlledIndex: networked ? defaultControlledIndex(awayXI) : null,
     charge: IDLE_CHARGE,
     strikeCooldown: 0,
     awayCharge: IDLE_CHARGE,
@@ -154,7 +156,7 @@ const kickoffBodies = (homeClubId: string, awayClubId: string, netRole: NetRole 
 };
 
 export const useGameStore = create<GameState>((set, get) => ({
-  ...kickoffBodies(DEFAULT_HOME_CLUB_ID, DEFAULT_AWAY_CLUB_ID),
+  ...kickoffBodies(DEFAULT_HOME_CLUB_ID, DEFAULT_AWAY_CLUB_ID, false),
   input: { x: 0, z: 0, sprint: false },
   cameraMode: "broadcast",
 
@@ -187,18 +189,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastScorer: scorer,
     })),
   setClubs: (homeClubId, awayClubId) => set({ homeClubId, awayClubId }),
-  setNetRoom: (netRole, roomCode, roomId) =>
-    set({
-      netRole,
-      roomCode,
-      roomId,
-      awayControlledIndex:
-        netRole === "local" ? null : (get().awayControlledIndex ?? defaultControlledIndex(buildOutfield(getClub(get().awayClubId), AWAY_DEFEND_SIDE))),
-    }),
-  resetPositions: () => set(kickoffBodies(get().homeClubId, get().awayClubId, get().netRole)),
+  setNetRoom: (netRole, roomCode, roomId) => set({ netRole, roomCode, roomId }),
+  resetPositions: () =>
+    set(kickoffBodies(get().homeClubId, get().awayClubId, get().netRole !== "local")),
   resetMatch: () =>
     set({
-      ...kickoffBodies(get().homeClubId, get().awayClubId, get().netRole),
+      ...kickoffBodies(get().homeClubId, get().awayClubId, get().netRole !== "local"),
       score: { home: 0, away: 0 },
       matchTime: 0,
       period: 1,

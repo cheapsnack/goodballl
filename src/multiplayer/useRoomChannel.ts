@@ -1,79 +1,64 @@
 import { useEffect, useRef } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  ROOM_EVENTS,
-  type GuestInputPayload,
-  type GuestJoinedPayload,
-  type StateSnapshot,
-} from "./types";
+import type { GuestInputPayload, GuestJoinedPayload, MatchSnapshot } from "./types";
 
-export type RoomHandlers = {
+type Handlers = {
   onGuestJoined?: (payload: GuestJoinedPayload) => void;
   onInput?: (payload: GuestInputPayload) => void;
-  onState?: (payload: StateSnapshot) => void;
+  onState?: (payload: MatchSnapshot) => void;
+  /** Fires once the channel has actually joined the realtime socket. */
   onSubscribed?: () => void;
 };
 
-export type RoomChannel = {
-  sendGuestJoined: (payload: GuestJoinedPayload) => void;
-  sendInput: (payload: GuestInputPayload) => void;
-  sendState: (payload: StateSnapshot) => void;
-};
-
 /**
- * Subscribes to the shared `room:{code}` broadcast channel. Pass `code: null`
- * for a local single-player match and the hook stays completely inert.
- *
- * Handlers are kept in a ref so a re-render with new closures never tears down
- * and re-subscribes the channel mid-match (which would drop frames).
+ * One realtime broadcast channel per room code, shared by host and guest.
+ * Broadcast (not Postgres change events) — ephemeral, low-latency, and
+ * needs no replication setup on the table. Handlers are kept in a ref so
+ * callers can pass fresh closures every render without resubscribing.
  */
-export function useRoomChannel(code: string | null, handlers: RoomHandlers): RoomChannel {
+export function useRoomChannel(code: string | null, handlers: Handlers) {
+  const channelRef = useRef<RealtimeChannel | null>(null);
   const handlersRef = useRef(handlers);
   handlersRef.current = handlers;
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-
   useEffect(() => {
-    if (!code) {
-      channelRef.current = null;
-      return;
-    }
+    if (!code) return;
 
     const channel = supabase.channel(`room:${code}`, {
       config: { broadcast: { self: false, ack: false } },
     });
-    channelRef.current = channel;
 
     channel
-      .on("broadcast", { event: ROOM_EVENTS.guestJoined }, ({ payload }) =>
+      .on("broadcast", { event: "guest_joined" }, ({ payload }) =>
         handlersRef.current.onGuestJoined?.(payload as GuestJoinedPayload),
       )
-      .on("broadcast", { event: ROOM_EVENTS.input }, ({ payload }) =>
+      .on("broadcast", { event: "input" }, ({ payload }) =>
         handlersRef.current.onInput?.(payload as GuestInputPayload),
       )
-      .on("broadcast", { event: ROOM_EVENTS.state }, ({ payload }) =>
-        handlersRef.current.onState?.(payload as StateSnapshot),
+      .on("broadcast", { event: "state" }, ({ payload }) =>
+        handlersRef.current.onState?.(payload as MatchSnapshot),
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") handlersRef.current.onSubscribed?.();
       });
 
+    channelRef.current = channel;
     return () => {
+      supabase.removeChannel(channel);
       channelRef.current = null;
-      void supabase.removeChannel(channel);
     };
   }, [code]);
 
-  const send = (event: string, payload: unknown) => {
-    const ch = channelRef.current;
-    if (!ch) return;
-    void ch.send({ type: "broadcast", event, payload });
+  const sendGuestJoined = (payload: GuestJoinedPayload) => {
+    channelRef.current?.send({ type: "broadcast", event: "guest_joined", payload });
+  };
+  const sendInput = (payload: GuestInputPayload) => {
+    channelRef.current?.send({ type: "broadcast", event: "input", payload });
+  };
+  const sendState = (payload: MatchSnapshot) => {
+    channelRef.current?.send({ type: "broadcast", event: "state", payload });
   };
 
-  return {
-    sendGuestJoined: (payload) => send(ROOM_EVENTS.guestJoined, payload),
-    sendInput: (payload) => send(ROOM_EVENTS.input, payload),
-    sendState: (payload) => send(ROOM_EVENTS.state, payload),
-  };
+  return { sendGuestJoined, sendInput, sendState };
 }
