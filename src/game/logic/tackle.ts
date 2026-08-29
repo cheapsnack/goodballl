@@ -1,65 +1,51 @@
 import type { BallState } from "../types";
-import { BALL_RADIUS } from "./ballPhysics";
 
 /**
- * Slide tackle. A committed one-shot dash rather than a held state: pressing
- * the key adds a forward lunge to the player's velocity and opens a short
- * window during which touching the ball knocks it loose, whoever "had" it.
- * All tackle feel lives here — nothing downstream hardcodes these numbers.
+ * Slide-tackle feel. A tackle is a short committed dash rather than a held
+ * action — press it, and for a brief window afterward getting close to the
+ * ball forcibly knocks it loose, win or lose. The cooldown is the balance
+ * lever: cheap enough to use as a real defensive tool, expensive enough
+ * that spamming it just leaves you out of position.
  */
 export const TACKLE_TUNING = {
-  /** seconds before another tackle can be attempted */
-  cooldown: 1.0,
-  /** seconds the lunge can connect with the ball */
-  activeWindow: 0.32,
-  /** m/s added along the player's facing on the lunge */
-  dashSpeed: 9.5,
-  /** how close the ball must be for the tackle to connect */
-  reach: 1.9,
-  /** ball can't be tackled above this height */
-  maxHeight: 1.2,
-  /** m/s the ball is knocked away at */
-  knockSpeed: 9,
-  /** small pop so the loose ball reads as a real challenge */
-  knockLift: 1.6,
+  /** burst of speed added in the player's current facing direction when a tackle starts */
+  dashSpeed: 9,
+  /** seconds after starting a tackle where contact actually dispossesses */
+  activeWindow: 0.3,
+  /** seconds before the same player can tackle again */
+  cooldown: 1.1,
+  /** distance from the tackler to the ball for a tackle to connect */
+  reach: 1.3,
+  /** speed given to the ball when a tackle connects, knocking it loose */
+  impulseSpeed: 10,
 } as const;
 
-/** Forward lunge velocity for a player facing `heading`. */
+/**
+ * If the ball is within tackle reach of `tacklerPos`, knocks it loose away
+ * from the tackler at TACKLE_TUNING.impulseSpeed. Returns null when out of
+ * reach — nothing to do. Pure.
+ */
+export function attemptTackleImpulse(
+  ball: BallState,
+  tacklerPos: { x: number; z: number },
+): BallState | null {
+  const dx = ball.position.x - tacklerPos.x;
+  const dz = ball.position.z - tacklerPos.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist >= TACKLE_TUNING.reach) return null;
+
+  const nx = dist < 1e-3 ? 0 : dx / dist;
+  const nz = dist < 1e-3 ? 1 : dz / dist;
+  return {
+    ...ball,
+    velocity: { x: nx * TACKLE_TUNING.impulseSpeed, y: ball.velocity.y, z: nz * TACKLE_TUNING.impulseSpeed },
+  };
+}
+
+/** Dash velocity added when a tackle begins, in the tackler's facing direction. */
 export function tackleDash(heading: number): { x: number; z: number } {
   return {
     x: Math.sin(heading) * TACKLE_TUNING.dashSpeed,
     z: -Math.cos(heading) * TACKLE_TUNING.dashSpeed,
-  };
-}
-
-/**
- * Resolves a connecting tackle. Returns the knocked-loose ball, or null when
- * the lunge didn't reach it. Pure.
- */
-export function attemptTackleImpulse(
-  ball: BallState,
-  from: { x: number; z: number },
-): BallState | null {
-  if (ball.position.y > TACKLE_TUNING.maxHeight) return null;
-
-  const dx = ball.position.x - from.x;
-  const dz = ball.position.z - from.z;
-  const dist = Math.hypot(dx, dz);
-  if (dist > TACKLE_TUNING.reach) return null;
-
-  // Degenerate case: ball exactly underfoot — poke it straight ahead of it.
-  const len = dist || 1e-4;
-  const nx = dx / len;
-  const nz = dz / len;
-
-  return {
-    ...ball,
-    position: { ...ball.position, y: Math.max(ball.position.y, BALL_RADIUS) },
-    velocity: {
-      x: nx * TACKLE_TUNING.knockSpeed,
-      y: TACKLE_TUNING.knockLift,
-      z: nz * TACKLE_TUNING.knockSpeed,
-    },
-    heading: Math.atan2(nx, nz),
   };
 }
