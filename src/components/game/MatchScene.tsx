@@ -19,7 +19,7 @@ import {
   type CameraFrame,
   type CameraMode,
 } from "../../game/logic/camera";
-import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
+import { KEEPER_HANDS, stepGoalkeeper, tryKeeperClaim } from "../../game/logic/ai/goalkeeper";
 import {
   buildOutfield,
   nearestChaserIndex,
@@ -133,6 +133,8 @@ export function MatchScene() {
    * kicked it, since they're still standing right where it started.
    */
   const recentRelease = useRef<{ team: TeamSide; index: number; until: number } | null>(null);
+  /** Set while a goalkeeper has the ball in their hands, before distributing. */
+  const keeperHold = useRef<{ side: 1 | -1; until: number } | null>(null);
   /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
@@ -377,7 +379,8 @@ export function MatchScene() {
         playWhistle(); // kickoff whistle as play resumes
         useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
       } else if (store.matchStatus === "goal") {
-        store.resetPositions();
+        // The team that conceded restarts play.
+        store.resetPositions(store.lastScorer === "home" ? "away" : "home");
         useGameStore.setState({
           matchStatus: "kickoff",
           statusTimer: MATCH_TUNING.kickoffPause,
@@ -465,7 +468,8 @@ export function MatchScene() {
         });
         playWhistle();
       } else if (store.matchStatus === "halftime") {
-        store.resetPositions();
+        // Second half is kicked off by the side that didn't start the first.
+        store.resetPositions("away");
         useGameStore.setState({
           period: store.period + 1,
           matchTime: 0,
@@ -807,19 +811,68 @@ export function MatchScene() {
         spin: ball.spin,
       };
       lastTouch = possession.team;
+    } else if (keeperHold.current) {
+      // --- the keeper has it in their hands: hold, then distribute upfield ---
+      const hold = keeperHold.current;
+      const keeperBody = hold.side === HOME_DEFEND_SIDE ? homeGK : awayGK;
+      if (state.clock.elapsedTime < hold.until) {
+        ball = {
+          position: {
+            x: keeperBody.position.x,
+            y: KEEPER_HANDS.holdHeight,
+            z: keeperBody.position.z,
+          },
+          velocity: { x: 0, y: 0, z: 0 },
+          heading: ball.heading,
+          spin: ball.spin,
+        };
+      } else {
+        const attackDir = hold.side === HOME_DEFEND_SIDE ? 1 : -1;
+        const lateral = (Math.random() - 0.5) * 0.8;
+        ball = applyImpulse(
+          {
+            ...ball,
+            position: {
+              x: keeperBody.position.x + attackDir * 1.2,
+              y: KEEPER_HANDS.holdHeight,
+              z: keeperBody.position.z,
+            },
+          },
+          { x: attackDir, z: lateral },
+          KEEPER_HANDS.distributeSpeed,
+          KEEPER_HANDS.distributeLift,
+        );
+        keeperHold.current = null;
+        playKick(0.5);
+      }
+      lastTouch = hold.side === HOME_DEFEND_SIDE ? "home" : "away";
     } else {
       ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
-      // --- goalkeeper saves work on a loose ball only, against their fresh (post-movement) positions ---
-      const homeSaveCheck = tryKeeperSave(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
-      if (homeSaveCheck) {
-        ball = homeSaveCheck;
-        lastTouch = "away";
+      // --- goalkeeper hands work on a loose ball only, against their fresh (post-movement) positions ---
+      const homeClaim = tryKeeperClaim(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
+      if (homeClaim) {
+        ball = homeClaim.ball;
+        lastTouch = homeClaim.kind === "caught" ? "home" : "away";
+        if (homeClaim.kind === "caught") {
+          keeperHold.current = {
+            side: HOME_DEFEND_SIDE,
+            until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration,
+          };
+        }
       }
-      const awaySaveCheck = tryKeeperSave(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE);
-      if (awaySaveCheck) {
-        ball = awaySaveCheck;
-        lastTouch = "home";
+      const awayClaim = !keeperHold.current
+        ? tryKeeperClaim(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE)
+        : null;
+      if (awayClaim) {
+        ball = awayClaim.ball;
+        lastTouch = awayClaim.kind === "caught" ? "away" : "home";
+        if (awayClaim.kind === "caught") {
+          keeperHold.current = {
+            side: AWAY_DEFEND_SIDE,
+            until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration,
+          };
+        }
       }
 
       // --- capture: whoever's nearest and eligible picks it up clean ---
@@ -842,7 +895,7 @@ export function MatchScene() {
           candidates.push({ team: "away", index: i, body: bodyOf("away", i) });
         }
       }
-      const captured = tryCapture(ball, candidates);
+      const captured = keeperHold.current ? null : tryCapture(ball, candidates);
       if (captured) {
         possession = captured;
         lastTouch = captured.team;
@@ -857,6 +910,7 @@ export function MatchScene() {
         };
       }
     }
+
 
     // --- goal detection, dead-ball restarts & period end ---
     const goal = detectGoal(store.ball, ball);
@@ -878,6 +932,7 @@ export function MatchScene() {
         restartLock: null,
         possession: null,
       });
+      keeperHold.current = null;
       useGameStore.getState().recordGoal(goal.scorer);
       playWhistle();
       if (goal.scorer === "home") playCrowdRoar();
@@ -888,6 +943,7 @@ export function MatchScene() {
 
     const outOfBounds = detectOutOfBounds(store.ball, ball, lastTouch);
     if (outOfBounds) {
+      keeperHold.current = null;
       useGameStore.setState({
         homeOutfield,
         homeGK,

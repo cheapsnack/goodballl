@@ -12,7 +12,7 @@ export const BALL_TUNING = {
   restitution: 0.55,
   /** horizontal energy kept on each bounce */
   bounceGrip: 0.78,
-  maxSpeed: 24,
+  maxSpeed: 40,
 } as const;
 
 /**
@@ -21,9 +21,9 @@ export const BALL_TUNING = {
  */
 export const STRIKE_TUNING = {
   /** seconds of holding to reach full power */
-  chargeTime: 0.85,
+  chargeTime: 0.7,
   /** power floor on an instant tap (0..1) */
-  minPower: 0.24,
+  minPower: 0.38,
   /** how much of the player's closing speed is added to the strike */
   momentumTransfer: 0.4,
   /** seconds after a strike where the dribble pull is disabled */
@@ -47,16 +47,20 @@ export const STRIKE_TUNING = {
   shotAssistMinAlignment: 0.55,
 
   shot: {
-    minSpeed: 10,
-    maxSpeed: 22,
+    minSpeed: 17,
+    maxSpeed: 34,
     /** vertical:horizontal ratio with the loft modifier held */
     loftRatio: 0.5,
-    /** vertical:horizontal ratio for a driven shot */
-    baseLoftRatio: 0.05,
+    /**
+     * Vertical:horizontal ratio for a driven shot. Not zero on purpose — a
+     * struck shot lifts off the deck and can find the top of the net rather
+     * than always rolling in like a pass.
+     */
+    baseLoftRatio: 0.16,
   },
   pass: {
-    minSpeed: 6,
-    maxSpeed: 15,
+    minSpeed: 8,
+    maxSpeed: 17,
     loftRatio: 0.34,
     baseLoftRatio: 0,
   },

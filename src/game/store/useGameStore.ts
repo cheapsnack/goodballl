@@ -10,7 +10,7 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from "../logic/ai/difficulty";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
-import type { Possession } from "../logic/possession";
+import { possessionBallPosition, type Possession } from "../logic/possession";
 
 export const PITCH = {
   length: FIELD.length,
@@ -147,36 +147,60 @@ type GameState = {
   setDifficulty: (difficulty: Difficulty) => void;
   /** Sets the networking role and room identity for a Play-vs-Friend match. Call before kickoff. */
   setNetRoom: (role: NetRole, roomCode: string | null, roomId: string | null) => void;
-  /** Puts bodies back to kickoff shape without touching score or clock. */
-  resetPositions: () => void;
+  /**
+   * Puts bodies back to kickoff shape without touching score or clock.
+   * `kickoffTeam` is who restarts play — after a goal that's the team that
+   * conceded, so possession alternates like a real match.
+   */
+  resetPositions: (kickoffTeam?: TeamSide) => void;
   resetMatch: () => void;
 };
 
 /** Builds fresh kickoff bodies for both full XIs, given the two clubs playing. */
-const kickoffBodies = (homeClubId: string, awayClubId: string, awayHuman: boolean) => {
+const kickoffBodies = (
+  homeClubId: string,
+  awayClubId: string,
+  awayHuman: boolean,
+  kickoffTeam: TeamSide = "home",
+) => {
   const homeClub = getClub(homeClubId);
   const awayClub = getClub(awayClubId);
 
   const homeXI = buildOutfield(homeClub, HOME_DEFEND_SIDE);
   const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE);
 
+  const homeBodies = homeXI.map((e) => e.body);
+  const awayBodies = awayXI.map((e) => e.body);
+  const homeControlled = defaultControlledIndex(homeXI);
+  const awayControlled = defaultControlledIndex(awayXI);
+
+  // Whoever kicks off starts with the ball at their feet.
+  const starterIndex = kickoffTeam === "home" ? homeControlled : awayControlled;
+  const starter = (kickoffTeam === "home" ? homeBodies : awayBodies)[starterIndex];
+  const spot = starter ? possessionBallPosition(starter, 0) : { x: 0, z: 0 };
+
   return {
-    ball: initialBall(),
-    homeOutfield: homeXI.map((e) => e.body),
+    ball: {
+      ...initialBall(),
+      position: { x: spot.x, y: BALL_RADIUS, z: spot.z },
+      velocity: { x: 0, y: 0, z: 0 },
+    },
+    homeOutfield: homeBodies,
     homeGK: initialGK(HOME_DEFEND_SIDE),
     homeGKState: initialKeeperState(),
-    controlledIndex: defaultControlledIndex(homeXI),
-    awayOutfield: awayXI.map((e) => e.body),
+    controlledIndex: homeControlled,
+    awayOutfield: awayBodies,
     awayGK: initialGK(AWAY_DEFEND_SIDE),
     awayGKState: initialKeeperState(),
-    awayControlledIndex: awayHuman ? defaultControlledIndex(awayXI) : null,
+    awayControlledIndex: awayHuman ? awayControlled : null,
     charge: IDLE_CHARGE,
     strikeCooldown: 0,
     awayCharge: IDLE_CHARGE,
     awayStrikeCooldown: 0,
     restart: null,
     restartLock: null,
-    possession: null,
+    possession: { team: kickoffTeam, index: starterIndex },
+    lastTouch: kickoffTeam,
   };
 };
 
@@ -217,8 +241,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   setClubs: (homeClubId, awayClubId) => set({ homeClubId, awayClubId }),
   setDifficulty: (difficulty) => set({ difficulty }),
   setNetRoom: (netRole, roomCode, roomId) => set({ netRole, roomCode, roomId }),
-  resetPositions: () =>
-    set(kickoffBodies(get().homeClubId, get().awayClubId, AWAY_HUMAN_ROLES.includes(get().netRole))),
+  resetPositions: (kickoffTeam = "home") =>
+    set(
+      kickoffBodies(
+        get().homeClubId,
+        get().awayClubId,
+        AWAY_HUMAN_ROLES.includes(get().netRole),
+        kickoffTeam,
+      ),
+    ),
   resetMatch: () =>
     set({
       ...kickoffBodies(get().homeClubId, get().awayClubId, AWAY_HUMAN_ROLES.includes(get().netRole)),
