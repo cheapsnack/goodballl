@@ -468,7 +468,8 @@ export function MatchScene() {
         });
         playWhistle();
       } else if (store.matchStatus === "halftime") {
-        store.resetPositions();
+        // Second half is kicked off by the side that didn't start the first.
+        store.resetPositions("away");
         useGameStore.setState({
           period: store.period + 1,
           matchTime: 0,
