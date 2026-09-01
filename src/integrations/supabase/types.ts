@@ -19,7 +19,9 @@ export type Database = {
           code: string
           created_at: string
           guest_club_id: string | null
+          guest_token: string | null
           host_club_id: string
+          host_token: string
           id: string
           status: string
         }
@@ -27,7 +29,9 @@ export type Database = {
           code: string
           created_at?: string
           guest_club_id?: string | null
+          guest_token?: string | null
           host_club_id: string
+          host_token?: string
           id?: string
           status?: string
         }
@@ -35,7 +39,9 @@ export type Database = {
           code?: string
           created_at?: string
           guest_club_id?: string | null
+          guest_token?: string | null
           host_club_id?: string
+          host_token?: string
           id?: string
           status?: string
         }
@@ -46,7 +52,34 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_game_room: {
+        Args: { p_host_club_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          guest_club_id: string
+          host_club_id: string
+          host_token: string
+          id: string
+          status: string
+        }[]
+      }
+      end_game_room: {
+        Args: { p_room_id: string; p_token: string }
+        Returns: undefined
+      }
+      join_game_room: {
+        Args: { p_code: string; p_guest_club_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          guest_club_id: string
+          guest_token: string
+          host_club_id: string
+          id: string
+          status: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
