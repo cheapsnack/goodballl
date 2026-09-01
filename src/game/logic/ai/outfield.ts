@@ -1,6 +1,7 @@
 import type { BallState, Club, Kinematics, MovementInput, Player, PlayerPosition } from "../../types";
 import { FIELD } from "../field";
 import { playersAt } from "../../data/clubs";
+import { forceToInput, jockeyTarget, seekAvoiding, separation, STEERING_TUNING } from "./steering";
 
 /** Outfield AI feel. Every number the AI uses lives here. */
 export const OUTFIELD_TUNING = {
@@ -250,27 +251,44 @@ export function hasPossession(self: Kinematics, ball: BallState): boolean {
 }
 
 /**
- * Movement for an AI player who has the ball at their feet: blends between
- * "stay with the ball" and "drive at the opponent's goal", weighted by
- * `bias` (0 = just follows the ball like a normal chaser, 1 = beelines for
- * goal regardless of the ball's exact position). This is what makes
- * possession look like an intentional run rather than aimless shepherding.
+ * Movement for an AI player who has the ball at their feet: heads toward
+ * the opponent's goal but steers *around* any defenders it can see rather
+ * than driving straight through them, and pushes off nearby teammates so
+ * the attack doesn't clump into a single lane. Feeds a normalized
+ * MovementInput straight into stepMovement.
  */
 export function dribbleTowardGoal(
   self: Kinematics,
-  ball: BallState,
   goalX: number,
-  bias: number,
+  opponents: Kinematics[],
+  teammates: Kinematics[],
 ): MovementInput {
-  const toBallX = ball.position.x - self.position.x;
-  const toBallZ = ball.position.z - self.position.z;
-  const toGoalX = goalX - self.position.x;
-  const toGoalZ = -self.position.z; // aim roughly at the goal's centre line
+  const target = { x: goalX, z: 0 };
+  const seek = seekAvoiding(self, target, opponents);
+  const sep = separation(self, teammates);
+  return forceToInput({ x: seek.x + sep.x, z: seek.z + sep.z }, true);
+}
 
-  const bx = toBallX * (1 - bias) + toGoalX * bias;
-  const bz = toBallZ * (1 - bias) + toGoalZ * bias;
-  const len = Math.hypot(bx, bz) || 1;
-  return { x: bx / len, z: bz / len, sprint: true };
+/**
+ * Movement for an AI defender when their team is not chasing but the
+ * opponent has the ball: jockey — sit between the carrier and our goal at
+ * a threat distance, tracking sideways as they move. Combined with light
+ * separation so multiple defenders don't stack up on the same jockey spot.
+ */
+export function jockeyDefender(
+  self: Kinematics,
+  carrier: Kinematics,
+  ownGoalX: number,
+  teammates: Kinematics[],
+): MovementInput {
+  const target = jockeyTarget(carrier, ownGoalX);
+  const seek = seekAvoiding(self, target, []); // no lookahead avoidance while jockeying
+  const sep = separation(self, teammates);
+  // Use full-speed movement only when far from the jockey spot; ease off
+  // as we arrive so we shadow the carrier rather than overshooting past.
+  const dist = Math.hypot(target.x - self.position.x, target.z - self.position.z);
+  const sprint = dist > STEERING_TUNING.jockeyDistance * 1.5;
+  return forceToInput({ x: seek.x + sep.x, z: seek.z + sep.z }, sprint);
 }
 
 /**
