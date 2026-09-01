@@ -19,7 +19,7 @@ import {
   type CameraFrame,
   type CameraMode,
 } from "../../game/logic/camera";
-import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
+import { KEEPER_HANDS, stepGoalkeeper, tryKeeperClaim } from "../../game/logic/ai/goalkeeper";
 import {
   buildOutfield,
   nearestChaserIndex,
@@ -133,6 +133,8 @@ export function MatchScene() {
    * kicked it, since they're still standing right where it started.
    */
   const recentRelease = useRef<{ team: TeamSide; index: number; until: number } | null>(null);
+  /** Set while a goalkeeper has the ball in their hands, before distributing. */
+  const keeperHold = useRef<{ side: 1 | -1; until: number } | null>(null);
   /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
@@ -928,6 +930,7 @@ export function MatchScene() {
         restartLock: null,
         possession: null,
       });
+      keeperHold.current = null;
       useGameStore.getState().recordGoal(goal.scorer);
       playWhistle();
       if (goal.scorer === "home") playCrowdRoar();
