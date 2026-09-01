@@ -1,14 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-/** Characters chosen to avoid look-alikes (no 0/O, 1/I) when read aloud or typed. */
-const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function randomCode(len = 5): string {
-  return Array.from({ length: len }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join(
-    "",
-  );
-}
-
 export type RoomRow = {
   id: string;
   code: string;
@@ -18,56 +9,52 @@ export type RoomRow = {
   created_at: string;
 };
 
-/** Creates a new waiting room for the host, retrying on the rare code collision. */
+/**
+ * Private token proving this client is the host/guest of a room.
+ * Never rendered; only sent back when ending the room.
+ */
+const roomTokens = new Map<string, string>();
+
+/** Creates a new waiting room for the host via a security-definer function. */
 export async function createRoom(hostClubId: string): Promise<RoomRow> {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const code = randomCode();
-    const { data, error } = await supabase
-      .from("game_rooms")
-      .insert({ code, host_club_id: hostClubId, status: "waiting" })
-      .select()
-      .single();
-
-    if (!error && data) return data as RoomRow;
-    // 23505 = unique_violation on the code column — just try a new code.
-    if (error && (error as { code?: string }).code !== "23505") {
-      throw new Error(error.message);
-    }
-  }
-  throw new Error("Could not create a room right now — please try again.");
-}
-
-/** Looks up a waiting room by code and marks it active with the guest's club. */
-export async function joinRoom(code: string, guestClubId: string): Promise<RoomRow> {
-  const normalized = code.trim().toUpperCase();
-
-  const { data: room, error: findError } = await supabase
-    .from("game_rooms")
-    .select("*")
-    .eq("code", normalized)
-    .eq("status", "waiting")
+  const { data, error } = await supabase
+    .rpc("create_game_room", { p_host_club_id: hostClubId })
     .maybeSingle();
 
-  if (findError) throw new Error(findError.message);
-  if (!room) throw new Error("That room code wasn't found, or the match already started.");
-
-  const { data: updated, error: updateError } = await supabase
-    .from("game_rooms")
-    .update({ guest_club_id: guestClubId, status: "active" })
-    .eq("id", (room as RoomRow).id)
-    .select()
-    .single();
-
-  if (updateError || !updated) {
-    throw new Error(updateError?.message ?? "Could not join that room — please try again.");
+  if (error || !data) {
+    throw new Error(error?.message ?? "Could not create a room right now — please try again.");
   }
-  return updated as RoomRow;
+  const row = data as RoomRow & { host_token: string };
+  roomTokens.set(row.id, row.host_token);
+  const { host_token: _t, ...rest } = row;
+  return rest as RoomRow;
+}
+
+/** Joins a waiting room by code. Requires knowing the exact code — rooms can't be listed. */
+export async function joinRoom(code: string, guestClubId: string): Promise<RoomRow> {
+  const { data, error } = await supabase
+    .rpc("join_game_room", {
+      p_code: code.trim().toUpperCase(),
+      p_guest_club_id: guestClubId,
+    })
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new Error("That room code wasn't found, or the match already started.");
+  }
+  const row = data as RoomRow & { guest_token: string };
+  roomTokens.set(row.id, row.guest_token);
+  const { guest_token: _t, ...rest } = row;
+  return rest as RoomRow;
 }
 
 /** Marks a room ended. Best-effort — failures here shouldn't block leaving the match. */
 export async function endRoom(roomId: string): Promise<void> {
+  const token = roomTokens.get(roomId);
+  if (!token) return;
   try {
-    await supabase.from("game_rooms").update({ status: "ended" }).eq("id", roomId);
+    await supabase.rpc("end_game_room", { p_room_id: roomId, p_token: token });
+    roomTokens.delete(roomId);
   } catch {
     // Non-critical; the row is harmless left as "active".
   }
