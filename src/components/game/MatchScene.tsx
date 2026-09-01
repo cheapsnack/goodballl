@@ -126,6 +126,13 @@ export function MatchScene() {
   const tackleState = useRef({ cooldown: 0, active: 0 });
   /** Away controlled player's (guest's) tackle cooldown / active-contact window. */
   const awayTackleState = useRef({ cooldown: 0, active: 0 });
+  /**
+   * Whoever most recently released the ball (shot, passed, or got tackled)
+   * is excluded from capturing it again until this expires — without this,
+   * a shot or pass gets instantly re-swallowed by the very player who just
+   * kicked it, since they're still standing right where it started.
+   */
+  const recentRelease = useRef<{ team: TeamSide; index: number; until: number } | null>(null);
   /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
@@ -573,6 +580,11 @@ export function MatchScene() {
       lastTouch = "home";
       restartLock = null;
       possession = null;
+      recentRelease.current = {
+        team: "home",
+        index: controlledIndex,
+        until: state.clock.elapsedTime + STRIKE_TUNING.cooldown,
+      };
       playKick(prevCharge.power);
       bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
     }
@@ -591,36 +603,13 @@ export function MatchScene() {
       lastTouch = "away";
       restartLock = null;
       possession = null;
+      recentRelease.current = {
+        team: "away",
+        index: awayControlledIndex ?? 0,
+        until: state.clock.elapsedTime + STRIKE_TUNING.cooldown,
+      };
       playKick(prevAwayCharge.power);
       bumpAnim(awayRefs.current[awayControlledIndex ?? 0] ?? null, "kickCount");
-    }
-
-    // --- tackle resolution: strips possession from whoever has it, if anyone, and knocks the ball loose ---
-    if (tackleState.current.active > 0 && (restartLock === null || restartLock === "home")) {
-      const knocked = attemptTackleImpulse(ball, controlled.position);
-      if (knocked) {
-        ball = knocked;
-        lastTouch = "home";
-        restartLock = null;
-        possession = null;
-        tackleState.current.active = 0;
-        playKick(0.55);
-      }
-    }
-    if (
-      awayControlled &&
-      awayTackleState.current.active > 0 &&
-      (restartLock === null || restartLock === "away")
-    ) {
-      const knocked = attemptTackleImpulse(ball, awayControlled.position);
-      if (knocked) {
-        ball = knocked;
-        lastTouch = "away";
-        restartLock = null;
-        possession = null;
-        awayTackleState.current.active = 0;
-        playKick(0.55);
-      }
     }
 
     // --- home outfield (AI teammates + the controlled player) ---
@@ -646,6 +635,7 @@ export function MatchScene() {
             lastTouch = "home";
             restartLock = null;
             possession = null;
+            recentRelease.current = { team: "home", index: i, until: state.clock.elapsedTime + STRIKE_TUNING.cooldown };
             bumpAnim(homeRefs.current[i] ?? null, "kickCount");
             playKick(0.6);
           }
@@ -703,6 +693,7 @@ export function MatchScene() {
             lastTouch = "away";
             restartLock = null;
             possession = null;
+            recentRelease.current = { team: "away", index: i, until: state.clock.elapsedTime + STRIKE_TUNING.cooldown };
             bumpAnim(awayRefs.current[i] ?? null, "kickCount");
             playKick(0.6);
           }
@@ -748,6 +739,53 @@ export function MatchScene() {
         : awayOutfield[index]!;
     };
 
+    // --- tackle resolution: strips possession from whoever has it, if anyone ---
+    // Checked against the *carrier's actual body*, not the ball's offset
+    // dribble point — with the possession-lock system the ball can sit
+    // noticeably ahead of a carrier who's facing away from the tackler, so
+    // targeting the exact ball point made tackles whiff far more than they
+    // should. Tackling the player, not a phantom spot near them, is both
+    // more intuitive and more reliable.
+    const tackleTargetPos = possession ? bodyOf(possession.team, possession.index).position : ball.position;
+    const ballForTackle: BallState = { ...ball, position: { ...ball.position, ...tackleTargetPos } };
+
+    if (tackleState.current.active > 0 && (restartLock === null || restartLock === "home")) {
+      const knocked = attemptTackleImpulse(ballForTackle, controlled.position);
+      if (knocked) {
+        ball = knocked;
+        lastTouch = "home";
+        restartLock = null;
+        possession = null;
+        recentRelease.current = {
+          team: "home",
+          index: controlledIndex,
+          until: state.clock.elapsedTime + STRIKE_TUNING.cooldown,
+        };
+        tackleState.current.active = 0;
+        playKick(0.55);
+      }
+    }
+    if (
+      awayControlled &&
+      awayTackleState.current.active > 0 &&
+      (restartLock === null || restartLock === "away")
+    ) {
+      const knocked = attemptTackleImpulse(ballForTackle, awayControlled.position);
+      if (knocked) {
+        ball = knocked;
+        lastTouch = "away";
+        restartLock = null;
+        possession = null;
+        recentRelease.current = {
+          team: "away",
+          index: awayControlledIndex ?? 0,
+          until: state.clock.elapsedTime + STRIKE_TUNING.cooldown,
+        };
+        awayTackleState.current.active = 0;
+        playKick(0.55);
+      }
+    }
+
     // --- goalkeeper movement (positioning/diving reacts to the ball as of any strike/tackle already resolved this frame) ---
     const homeDecision = stepGoalkeeper(store.homeGK, store.homeGKState, ball, HOME_DEFEND_SIDE, dt);
     const homeGK = driveGoalkeeper(store.homeGK, homeDecision, homeGKParams, HOME_DEFEND_SIDE, dt);
@@ -785,14 +823,22 @@ export function MatchScene() {
       }
 
       // --- capture: whoever's nearest and eligible picks it up clean ---
+      // Excludes whoever just released the ball (see recentRelease above) so
+      // a shot or pass can't be instantly re-swallowed by its own kicker.
+      const excluded =
+        recentRelease.current && state.clock.elapsedTime < recentRelease.current.until
+          ? recentRelease.current
+          : null;
       const candidates: { team: TeamSide; index: number; body: Kinematics }[] = [];
       if (restartLock === null || restartLock === "home") {
         for (let i = 0; i < homeOutfield.length; i++) {
+          if (excluded && excluded.team === "home" && excluded.index === i) continue;
           candidates.push({ team: "home", index: i, body: bodyOf("home", i) });
         }
       }
       if (restartLock === null || restartLock === "away") {
         for (let i = 0; i < awayOutfield.length; i++) {
+          if (excluded && excluded.team === "away" && excluded.index === i) continue;
           candidates.push({ team: "away", index: i, body: bodyOf("away", i) });
         }
       }
