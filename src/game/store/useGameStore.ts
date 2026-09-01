@@ -10,7 +10,7 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from "../logic/ai/difficulty";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
-import type { Possession } from "../logic/possession";
+import { possessionBallPosition, type Possession } from "../logic/possession";
 
 export const PITCH = {
   length: FIELD.length,

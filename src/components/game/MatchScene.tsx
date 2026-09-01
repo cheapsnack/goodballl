@@ -379,7 +379,8 @@ export function MatchScene() {
         playWhistle(); // kickoff whistle as play resumes
         useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
       } else if (store.matchStatus === "goal") {
-        store.resetPositions();
+        // The team that conceded restarts play.
+        store.resetPositions(store.lastScorer === "home" ? "away" : "home");
         useGameStore.setState({
           matchStatus: "kickoff",
           statusTimer: MATCH_TUNING.kickoffPause,
@@ -941,6 +942,7 @@ export function MatchScene() {
 
     const outOfBounds = detectOutOfBounds(store.ball, ball, lastTouch);
     if (outOfBounds) {
+      keeperHold.current = null;
       useGameStore.setState({
         homeOutfield,
         homeGK,
