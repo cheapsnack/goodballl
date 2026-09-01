@@ -807,19 +807,68 @@ export function MatchScene() {
         spin: ball.spin,
       };
       lastTouch = possession.team;
+    } else if (keeperHold.current) {
+      // --- the keeper has it in their hands: hold, then distribute upfield ---
+      const hold = keeperHold.current;
+      const keeperBody = hold.side === HOME_DEFEND_SIDE ? homeGK : awayGK;
+      if (state.clock.elapsedTime < hold.until) {
+        ball = {
+          position: {
+            x: keeperBody.position.x,
+            y: KEEPER_HANDS.holdHeight,
+            z: keeperBody.position.z,
+          },
+          velocity: { x: 0, y: 0, z: 0 },
+          heading: ball.heading,
+          spin: ball.spin,
+        };
+      } else {
+        const attackDir = hold.side === HOME_DEFEND_SIDE ? 1 : -1;
+        const lateral = (Math.random() - 0.5) * 0.8;
+        ball = applyImpulse(
+          {
+            ...ball,
+            position: {
+              x: keeperBody.position.x + attackDir * 1.2,
+              y: KEEPER_HANDS.holdHeight,
+              z: keeperBody.position.z,
+            },
+          },
+          { x: attackDir, z: lateral },
+          KEEPER_HANDS.distributeSpeed,
+          KEEPER_HANDS.distributeLift,
+        );
+        keeperHold.current = null;
+        playKick(0.5);
+      }
+      lastTouch = hold.side === HOME_DEFEND_SIDE ? "home" : "away";
     } else {
       ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
-      // --- goalkeeper saves work on a loose ball only, against their fresh (post-movement) positions ---
-      const homeSaveCheck = tryKeeperSave(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
-      if (homeSaveCheck) {
-        ball = homeSaveCheck;
-        lastTouch = "away";
+      // --- goalkeeper hands work on a loose ball only, against their fresh (post-movement) positions ---
+      const homeClaim = tryKeeperClaim(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
+      if (homeClaim) {
+        ball = homeClaim.ball;
+        lastTouch = homeClaim.kind === "caught" ? "home" : "away";
+        if (homeClaim.kind === "caught") {
+          keeperHold.current = {
+            side: HOME_DEFEND_SIDE,
+            until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration,
+          };
+        }
       }
-      const awaySaveCheck = tryKeeperSave(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE);
-      if (awaySaveCheck) {
-        ball = awaySaveCheck;
-        lastTouch = "home";
+      const awayClaim = !keeperHold.current
+        ? tryKeeperClaim(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE)
+        : null;
+      if (awayClaim) {
+        ball = awayClaim.ball;
+        lastTouch = awayClaim.kind === "caught" ? "away" : "home";
+        if (awayClaim.kind === "caught") {
+          keeperHold.current = {
+            side: AWAY_DEFEND_SIDE,
+            until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration,
+          };
+        }
       }
 
       // --- capture: whoever's nearest and eligible picks it up clean ---
@@ -842,7 +891,7 @@ export function MatchScene() {
           candidates.push({ team: "away", index: i, body: bodyOf("away", i) });
         }
       }
-      const captured = tryCapture(ball, candidates);
+      const captured = keeperHold.current ? null : tryCapture(ball, candidates);
       if (captured) {
         possession = captured;
         lastTouch = captured.team;
@@ -857,6 +906,7 @@ export function MatchScene() {
         };
       }
     }
+
 
     // --- goal detection, dead-ball restarts & period end ---
     const goal = detectGoal(store.ball, ball);
