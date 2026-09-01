@@ -251,3 +251,48 @@ export function tryKeeperSave(
     },
   };
 }
+
+/** Extra keeper-hands numbers: a claim is a catch when the ball is takeable. */
+export const KEEPER_HANDS = {
+  /** anything arriving slower than this gets caught cleanly instead of parried */
+  catchMaxSpeed: 22,
+  /** a caught ball is held at roughly hand height */
+  holdHeight: 1.15,
+  /** seconds the keeper holds the ball before distributing it */
+  holdDuration: 1.1,
+  /** speed of the keeper's throw/kick upfield after a catch */
+  distributeSpeed: 17,
+  /** vertical launch on the distribution */
+  distributeLift: 4.5,
+} as const;
+
+export type KeeperClaim =
+  | { kind: "caught"; ball: BallState }
+  | { kind: "parried"; ball: BallState };
+
+/**
+ * The keeper using their hands. A ball inside reach is *caught* when it's
+ * takeable (slow enough), and only punched clear when it's arriving too hot
+ * to hold. Returns null when the keeper doesn't get to it at all.
+ */
+export function tryKeeperClaim(
+  ball: BallState,
+  keeper: Kinematics,
+  state: KeeperState,
+  side: 1 | -1,
+): KeeperClaim | null {
+  const parried = tryKeeperSave(ball, keeper, state, side);
+  if (!parried) return null;
+
+  const speed = Math.hypot(ball.velocity.x, ball.velocity.z);
+  if (speed > KEEPER_HANDS.catchMaxSpeed) return { kind: "parried", ball: parried };
+
+  return {
+    kind: "caught",
+    ball: {
+      ...ball,
+      position: { x: keeper.position.x, y: KEEPER_HANDS.holdHeight, z: keeper.position.z },
+      velocity: { x: 0, y: 0, z: 0 },
+    },
+  };
+}
