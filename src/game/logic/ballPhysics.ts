@@ -12,16 +12,6 @@ export const BALL_TUNING = {
   restitution: 0.55,
   /** horizontal energy kept on each bounce */
   bounceGrip: 0.78,
-  /** how hard the player's body shoves the ball on contact */
-  pushStrength: 5,
-  /** how much of the player's closing speed carries into an incidental touch (0..1) — kept low so jogging past the ball doesn't launch it */
-  pushApproachTransfer: 0.25,
-  /** distance at which the ball is considered "at the player's feet" */
-  controlRadius: 1.2,
-  /** where the dribbled ball sits ahead of the player — tight, genuinely at the feet, not a stride ahead */
-  dribbleDistance: 0.45,
-  /** how strongly the dribble pulls the ball to that spot */
-  dribbleGrip: 15,
   maxSpeed: 24,
 } as const;
 
@@ -178,58 +168,36 @@ export function stepBall(ball: BallState, dt: number, opts: BallStepOptions): Ba
 }
 
 /**
- * Push-based player/ball interaction (no rigid bodies).
- *  - Inside the control radius while moving, the ball is nudged toward a point
- *    just ahead of the player: that reads as close-control dribbling.
- *  - Body contact always shoves the ball out so it can never sit inside the player.
+ * A simple hard-body deflection for anything touching a *loose* ball
+ * without possessing it — a shoulder brushing it, a shot cannoning off a
+ * defender. It only ever separates and lightly redirects; it never pulls
+ * the ball toward anyone. Actually *controlling* the ball is entirely the
+ * job of the possession system (see possession.ts) now, which is what
+ * fixed the ball feeling like it was fighting the player for control.
  */
-export function resolvePlayerBall(
+export function deflectOffPlayer(
   ball: BallState,
   player: Kinematics,
   playerRadius: number,
-  dt: number,
 ): BallState {
   const dx = ball.position.x - player.position.x;
   const dz = ball.position.z - player.position.z;
   const dist = Math.hypot(dx, dz) || 1e-4;
-
-  let vx = ball.velocity.x;
-  let vz = ball.velocity.z;
-  let x = ball.position.x;
-  let z = ball.position.z;
-
-  const playerSpeed = Math.hypot(player.velocity.x, player.velocity.z);
-  const airborne = ball.position.y > BALL_RADIUS * 2.5;
-
-  // Dribble pull.
-  if (!airborne && dist < BALL_TUNING.controlRadius && playerSpeed > 0.4) {
-    const tx = player.position.x + Math.sin(player.heading) * BALL_TUNING.dribbleDistance;
-    const tz = player.position.z - Math.cos(player.heading) * BALL_TUNING.dribbleDistance;
-    const grip = BALL_TUNING.dribbleGrip * dt;
-    vx += (tx - x) * grip * 6;
-    vz += (tz - z) * grip * 6;
-  }
-
-  // Hard body separation + push.
   const minDist = playerRadius + BALL_RADIUS;
-  if (!airborne && dist < minDist) {
-    const nx = dx / dist;
-    const nz = dz / dist;
-    x = player.position.x + nx * minDist;
-    z = player.position.z + nz * minDist;
+  if (ball.position.y > BALL_RADIUS * 2.5 || dist >= minDist) return ball;
 
-    const approach = player.velocity.x * nx + player.velocity.z * nz;
-    const push =
-      Math.max(approach, 0) * BALL_TUNING.pushApproachTransfer + BALL_TUNING.pushStrength * dt;
-    vx += nx * push;
-    vz += nz * push;
-  }
-
-  if (vx === ball.velocity.x && vz === ball.velocity.z && x === ball.position.x) return ball;
+  const nx = dx / dist;
+  const nz = dz / dist;
+  const approach = player.velocity.x * nx + player.velocity.z * nz;
+  const kick = Math.max(approach, 0) * 0.3 + 1.5;
 
   return {
     ...ball,
-    position: { x, y: ball.position.y, z },
-    velocity: { x: vx, y: ball.velocity.y, z: vz },
+    position: {
+      x: player.position.x + nx * minDist,
+      y: ball.position.y,
+      z: player.position.z + nz * minDist,
+    },
+    velocity: { x: ball.velocity.x + nx * kick, y: ball.velocity.y, z: ball.velocity.z + nz * kick },
   };
 }

@@ -19,14 +19,21 @@ export type MovementParams = {
 
 /** Global feel knobs — tweak these first when movement feels wrong. */
 export const MOVEMENT_TUNING = {
-  baseAccel: 22,
-  paceAccelRange: 14,
-  baseSpeed: 7.6,
-  paceSpeedRange: 5.4,
-  sprintMult: 1.42,
-  friction: 5.2,
-  baseTurnRate: 5.0,
-  dribbleTurnRange: 5.0,
+  baseAccel: 26,
+  paceAccelRange: 10,
+  baseSpeed: 5.8,
+  paceSpeedRange: 3.2,
+  sprintMult: 1.38,
+  friction: 8.5,
+  baseTurnRate: 6.5,
+  dribbleTurnRange: 3.5,
+  /**
+   * Extra turn-rate multiplier at a dead stop, fading to 1x at top speed —
+   * real players pivot sharply in close control but can't cut on a dime at
+   * a full sprint. This is a big part of what makes close control actually
+   * feel controllable instead of car-like.
+   */
+  lowSpeedTurnBoost: 0.9,
 } as const;
 
 const norm = (v: number) => Math.max(0, Math.min(1, v / 99));
@@ -84,10 +91,13 @@ export function stepMovement(
     const target = Math.atan2(input.x / mag, -(input.z / mag));
     const delta = angleDelta(heading, target);
 
-    // Slower turning at speed keeps sprinting from feeling like a mouse cursor.
+    // Turning is sharpest at low speed (close control) and tightens up at
+    // top speed (can't cut on a dime at a full sprint) — this is the main
+    // lever for "weighty but controllable" instead of car-like drifting.
     const speed = Math.hypot(vx, vz);
-    const turnPenalty = 1 - 0.35 * Math.min(1, speed / Math.max(0.001, maxSpeed));
-    const maxTurn = params.turnRate * turnPenalty * dt;
+    const speedFrac = Math.min(1, speed / Math.max(0.001, maxSpeed));
+    const turnMult = 1 + MOVEMENT_TUNING.lowSpeedTurnBoost * (1 - speedFrac);
+    const maxTurn = params.turnRate * turnMult * dt;
     heading += Math.max(-maxTurn, Math.min(maxTurn, delta));
 
     // Only drive forward once roughly pointing the right way.

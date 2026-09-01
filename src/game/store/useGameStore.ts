@@ -10,6 +10,7 @@ import { DEFAULT_DIFFICULTY, type Difficulty } from "../logic/ai/difficulty";
 import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../logic/match";
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
+import type { Possession } from "../logic/possession";
 
 export const PITCH = {
   length: FIELD.length,
@@ -116,6 +117,12 @@ type GameState = {
    * whoever's AI happens to be standing closest.
    */
   restartLock: TeamSide | null;
+  /**
+   * Who currently has the ball glued to their feet, or null when it's a
+   * free loose ball. This is the single source of truth for possession —
+   * see possession.ts for why that replaced the old physics-pull dribble.
+   */
+  possession: Possession | null;
 
   /** --- club selection, set from the menu before kickoff --- */
   homeClubId: string;
@@ -169,6 +176,7 @@ const kickoffBodies = (homeClubId: string, awayClubId: string, awayHuman: boolea
     awayStrikeCooldown: 0,
     restart: null,
     restartLock: null,
+    possession: null,
   };
 };
 
