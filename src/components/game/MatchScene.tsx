@@ -648,9 +648,15 @@ export function MatchScene() {
 
     // --- strikes: releasing the charge always gives up possession ---
     if (released && canStrike(controlled, ball, possession?.team === "home" && possession?.index === controlledIndex) && (restartLock === null || restartLock === "home")) {
-      const goalTarget =
-        prevCharge.action === "shoot" ? { x: -HOME_DEFEND_SIDE * PITCH.halfLength, z: 0 } : undefined;
-      const strike = resolveStrike(controlled, prevCharge, goalTarget);
+      // For shots: nudge toward goal centre. For passes: lock onto the nearest
+      // teammate in the facing cone so passes feel responsive even with imprecise aim.
+      let strikeTarget: { x: number; z: number } | undefined;
+      if (prevCharge.action === "shoot") {
+        strikeTarget = { x: -HOME_DEFEND_SIDE * PITCH.halfLength, z: 0 };
+      } else if (prevCharge.action === "pass") {
+        strikeTarget = nearestTeammateInCone(controlled, store.homeOutfield, controlledIndex);
+      }
+      const strike = resolveStrike(controlled, prevCharge, strikeTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       cooldown = STRIKE_TUNING.cooldown;
       lastTouch = "home";
@@ -663,8 +669,7 @@ export function MatchScene() {
       };
       playKick(prevCharge.power);
       bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
-      // Auto-switch to the nearest teammate after a pass, like FIFA/PES — the
-      // passer is now irrelevant until the ball comes back to them.
+      // Auto-switch to the nearest teammate after a pass, like FIFA/PES.
       if (prevCharge.action === "pass") {
         const next = nearestToBallIndex(store.homeOutfield, ball);
         if (next !== controlledIndex) useGameStore.setState({ controlledIndex: next });
@@ -677,9 +682,13 @@ export function MatchScene() {
       canStrike(awayControlled, ball, possession?.team === "away" && possession?.index === awayControlledIndex) &&
       (restartLock === null || restartLock === "away")
     ) {
-      const goalTarget =
-        prevAwayCharge.action === "shoot" ? { x: -AWAY_DEFEND_SIDE * PITCH.halfLength, z: 0 } : undefined;
-      const strike = resolveStrike(awayControlled, prevAwayCharge, goalTarget);
+      let awayStrikeTarget: { x: number; z: number } | undefined;
+      if (prevAwayCharge.action === "shoot") {
+        awayStrikeTarget = { x: -AWAY_DEFEND_SIDE * PITCH.halfLength, z: 0 };
+      } else if (prevAwayCharge.action === "pass") {
+        awayStrikeTarget = nearestTeammateInCone(awayControlled, store.awayOutfield, awayControlledIndex ?? 0);
+      }
+      const strike = resolveStrike(awayControlled, prevAwayCharge, awayStrikeTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
       awayCooldown = STRIKE_TUNING.cooldown;
       lastTouch = "away";
@@ -1255,9 +1264,39 @@ function LivePlayerLabels({
 }
 
 /**
- * Shared goalkeeper drive step for either side — diving is scripted motion
- * (drives the body directly rather than through the acceleration model, so
- * the dive stays snappy and readable); otherwise it's regular stepMovement.
+ * Finds the nearest teammate in front of `passer` (within a 130° forward cone).
+ * Returns the position of the best target, or undefined if none found.
+ * Used for pass assist so the ball curves toward a real receiving player.
+ */
+function nearestTeammateInCone(
+  passer: Kinematics,
+  teammates: Kinematics[],
+  selfIndex: number,
+): { x: number; z: number } | undefined {
+  const facingX = Math.sin(passer.heading);
+  const facingZ = -Math.cos(passer.heading);
+  const minAlignment = 0.15; // cos(~81°) — generous forward half
+  let best: { x: number; z: number } | undefined;
+  let bestDist = Infinity;
+
+  teammates.forEach((t, i) => {
+    if (i === selfIndex) return;
+    const dx = t.position.x - passer.position.x;
+    const dz = t.position.z - passer.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist < 1) return; // skip players on top of each other
+    const alignment = (dx * facingX + dz * facingZ) / dist;
+    if (alignment < minAlignment) return; // behind the passer
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = { x: t.position.x, z: t.position.z };
+    }
+  });
+  return best;
+}
+
+/**
+ * Shared goalkeeper drive step for either side.
  */
 function driveGoalkeeper(
   state: Kinematics,
