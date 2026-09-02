@@ -2,6 +2,8 @@ import type { BallState, Club, Kinematics, MovementInput, Player, PlayerPosition
 import { FIELD } from "../field";
 import { playersAt } from "../../data/clubs";
 import { forceToInput, jockeyTarget, seekAvoiding, separation, STEERING_TUNING } from "./steering";
+import type { Mentality } from "./mentality";
+import { MENTALITY_TUNING } from "./mentality";
 
 /** Outfield AI feel. Every number the AI uses lives here. */
 export const OUTFIELD_TUNING = {
@@ -34,11 +36,18 @@ export const OUTFIELD_TUNING = {
   safeMargin: 2.5,
 } as const;
 
-/** Depth (metres from *own* goal line) each line of a formation holds. */
+/**
+ * Depth (metres from *own* goal line) each line of a formation holds at a
+ * balanced mentality. Pitch is 105m long, so at balanced: defenders sit
+ * ~18m out (inside own third), midfielders straddle the halfway line, and
+ * forwards push into the top third of *their own* half — every player is
+ * legally onside for kickoff (in their own half) and roughly where they'd
+ * stand in a real 4-3-3 shape. Mentality shifts all three.
+ */
 export const FORMATION_DEPTH = {
-  DEF: 20,
-  MID: 50,
-  FWD: 78,
+  DEF: 18,
+  MID: 34,
+  FWD: 48,
 } as const;
 
 export type OutfieldSlot = { position: "DEF" | "MID" | "FWD"; depth: number; z: number };
@@ -83,9 +92,17 @@ export function formationSlots(formation: Club["formation"]): OutfieldSlot[] {
   ];
 }
 
-/** World-space anchor for a slot, given which goal the team defends. */
-export function slotAnchor(slot: OutfieldSlot, defendSide: 1 | -1): { x: number; z: number } {
-  return { x: defendSide * (FIELD.halfLength - slot.depth), z: slot.z };
+/**
+ * World-space anchor for a slot, given which goal the team defends and the
+ * team's mentality (which shifts the whole line forward or backward).
+ */
+export function slotAnchor(
+  slot: OutfieldSlot,
+  defendSide: 1 | -1,
+  mentality: Mentality = "balanced",
+): { x: number; z: number } {
+  const shifted = slot.depth + MENTALITY_TUNING[mentality].lineOffset;
+  return { x: defendSide * (FIELD.halfLength - shifted), z: slot.z };
 }
 
 export type OutfieldRole = {
@@ -100,9 +117,14 @@ export type OutfieldEntity = { role: OutfieldRole; player: Player; body: Kinemat
 /**
  * Builds a full 10-player outfield XI for a club in its own formation,
  * anchored to the goal it defends, with spawn positions at each player's
- * formation slot. Pure — call once per kickoff, not per frame.
+ * formation slot (adjusted for team mentality). Pure — call once per
+ * kickoff, not per frame.
  */
-export function buildOutfield(club: Club, defendSide: 1 | -1): OutfieldEntity[] {
+export function buildOutfield(
+  club: Club,
+  defendSide: 1 | -1,
+  mentality: Mentality = "balanced",
+): OutfieldEntity[] {
   const slots = formationSlots(club.formation);
   const used: Partial<Record<PlayerPosition, number>> = {};
 
@@ -112,7 +134,7 @@ export function buildOutfield(club: Club, defendSide: 1 | -1): OutfieldEntity[] 
     used[slot.position] = idx + 1;
     const player = pool[idx] ?? pool[0]!;
 
-    const anchor = slotAnchor(slot, defendSide);
+    const anchor = slotAnchor(slot, defendSide, mentality);
     // Face up the pitch toward the goal they attack.
     const heading = defendSide === 1 ? Math.PI : 0;
 
@@ -182,12 +204,21 @@ export function nearestToBallIndex(players: Kinematics[], ball: BallState): numb
   return best;
 }
 
-/** The spot a zonal (non-chasing) player wants to occupy, given the ball. */
-export function zonalAnchor(role: OutfieldRole, ball: BallState): { x: number; z: number } {
-  const t = OUTFIELD_TUNING;
-  const anchor = slotAnchor(role.slot, role.defendSide);
-  const x = anchor.x + (ball.position.x - anchor.x) * t.zonalTrackX;
-  const z = anchor.z + (ball.position.z - anchor.z) * t.zonalTrackZ;
+/**
+ * The spot a zonal (non-chasing) player wants to occupy, given the ball
+ * and the team's mentality. Mentality affects both where the base anchor
+ * sits (via slotAnchor) and how much the whole team shifts with the ball.
+ */
+export function zonalAnchor(
+  role: OutfieldRole,
+  ball: BallState,
+  mentality: Mentality = "balanced",
+): { x: number; z: number } {
+  const anchor = slotAnchor(role.slot, role.defendSide, mentality);
+  const shift = MENTALITY_TUNING[mentality].ballShift;
+  const zTracking = OUTFIELD_TUNING.zonalTrackZ;
+  const x = anchor.x + (ball.position.x - anchor.x) * shift;
+  const z = anchor.z + (ball.position.z - anchor.z) * zTracking;
   return clampToSafeZone(x, z);
 }
 
@@ -225,6 +256,7 @@ export function stepOutfield(
   role: OutfieldRole,
   ball: BallState,
   isChaser: boolean,
+  mentality: Mentality = "balanced",
 ): MovementInput {
   const t = OUTFIELD_TUNING;
 
@@ -236,7 +268,7 @@ export function stepOutfield(
     return seek(self, target, { deadZone: t.pressDeadZone, sprintRange: t.sprintRange });
   }
 
-  return seek(self, zonalAnchor(role, ball), {
+  return seek(self, zonalAnchor(role, ball, mentality), {
     deadZone: t.zonalDeadZone,
     sprintRange: t.sprintRange * 2,
   });
