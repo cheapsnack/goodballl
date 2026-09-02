@@ -4,29 +4,34 @@ export type CameraMode = "broadcast" | "run";
 
 export const CAMERA_TUNING = {
   broadcast: {
-    /** height above the pitch */
-    height: 33,
+    /** height above the pitch — lower = players look bigger */
+    height: 22,
     /** distance back from the target along +z */
-    distance: 38,
+    distance: 28,
     /** how far the cam drifts horizontally with play (0..1 of target x) */
     trackX: 0.55,
     /** clamp on horizontal drift so the cam stays broadcast-ish */
-    maxTrackX: 26,
+    maxTrackX: 20,
     /** exponential smoothing coefficient (higher = snappier) */
-    smooth: 2.4,
+    smooth: 2.8,
     lookAhead: 0.35,
-    fov: 45,
+    fov: 52,
+    /**
+     * Dynamic zoom: when both the ball and controlled player are inside the
+     * penalty area the camera closes in, raising `fov` makes the field fill
+     * more of the frame. `zoomInFov` is the maximum fov when zoomed in fully.
+     * Implemented by the caller via `camera.fov` — we just expose the values.
+     */
+    zoomInFov: 62,
+    /** distance to ball below which the camera zooms in (metres) */
+    zoomTriggerDist: 25,
   },
   run: {
-    /** height above the player */
     height: 4.2,
-    /** distance behind the player, opposite their heading */
     distance: 6.5,
-    /** how far above the player the camera looks */
     lookHeight: 0.9,
-    /** exponential smoothing coefficient (higher = snappier) */
     smooth: 6,
-    fov: 62,
+    fov: 65,
   },
 } as const;
 

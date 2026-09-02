@@ -78,8 +78,9 @@ function clampToSafeZone(x: number, z: number): { x: number; z: number } {
   };
 }
 
-/** Evenly spreads `n` points across the pitch width, centred on 0. */
-function spreadZ(n: number, maxAbsZ = 27): number[] {
+/** Evenly spreads `n` points across the pitch width, centred on 0.
+ * Wider maxAbsZ spreads lines further apart laterally, reducing clumping. */
+function spreadZ(n: number, maxAbsZ = 30): number[] {
   if (n <= 0) return [];
   if (n === 1) return [0];
   const step = (maxAbsZ * 2) / (n - 1);

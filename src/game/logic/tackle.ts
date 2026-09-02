@@ -20,11 +20,16 @@ export const TACKLE_TUNING = {
   impulseSpeed: 10,
   /**
    * If a tackle dash reaches within this radius of an *opponent's body*
-   * without first winning the ball, it counts as a foul. Set larger than
-   * the steal radius so a clumsy challenge that would have been a steal
-   * at closer range still counts as a foul when slightly mistimed/wide.
+   * without first winning the ball, it counts as a foul. Set at 1.6m:
+   * - Must be smaller than the steal radius (1.2m) would be reached first
+   *   if the player was actually winning the ball.
+   * - Only triggers when the ball genuinely wasn't reached (the knock was
+   *   null) AND the opponent body is this close — about the distance of a
+   *   genuine challenge that misses the ball.
+   * Deliberately conservative: better to have fewer, meaningful cards than
+   * a card every other tackle.
    */
-  foulRadius: 2.0,
+  foulRadius: 1.6,
 } as const;
 
 /**

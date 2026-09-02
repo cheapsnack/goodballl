@@ -20,9 +20,9 @@ export const STEERING_TUNING = {
   /** avoidance weight — high on purpose so a defender in the path actually deflects the run */
   avoidWeight: 2,
   /** how close a teammate can be before separation kicks in */
-  separationRadius: 3,
-  /** separation weight — keeps AI teammates from clumping into the ball */
-  separationWeight: 1.3,
+  separationRadius: 4,
+  /** separation weight — increased to prevent midfield scrum */
+  separationWeight: 2.2,
   /**
    * A jockeying defender sits this far from the carrier on the goal-side —
    * close enough to threaten, far enough not to just charge in.
