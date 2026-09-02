@@ -1,7 +1,8 @@
-// AUTO-GENERATED squad data. Fictionalized club and player names
-// (Cricket 97/98-style parody convention) — no real club or player names
-// are used. Regenerate via the generator script if you need different
-// squads; do not hand-edit attribute numbers without also updating there.
+// AUTO-GENERATED squad data. Fictional Indian-style parody names,
+// keeping the "initial + surname" convention. No real club or player
+// names are used — regenerate via the generator script if you need
+// different squads; do not hand-edit attribute numbers without also
+// updating the generator.
 
 import type { Club } from "../types";
 
@@ -16,7 +17,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "meridian-city-01",
-        name: "C. Stelworth",
+        name: "S. Chopavan",
         position: "GK",
         attributes: {
           pace: 56,
@@ -29,7 +30,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-02",
-        name: "B. Jovstone",
+        name: "R. Patekh",
         position: "GK",
         attributes: {
           pace: 51,
@@ -42,7 +43,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-03",
-        name: "K. Mabake",
+        name: "S. Tenduker",
         position: "DEF",
         attributes: {
           pace: 68,
@@ -55,7 +56,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-04",
-        name: "M. Bramfield",
+        name: "B. Bansalon",
         position: "DEF",
         attributes: {
           pace: 72,
@@ -68,7 +69,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-05",
-        name: "C. Morby",
+        name: "S. Verkar",
         position: "DEF",
         attributes: {
           pace: 66,
@@ -81,7 +82,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-06",
-        name: "R. Irstone",
+        name: "H. Naraorey",
         position: "DEF",
         attributes: {
           pace: 73,
@@ -94,7 +95,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-07",
-        name: "J. Irstone",
+        name: "N. Patorey",
         position: "DEF",
         attributes: {
           pace: 79,
@@ -107,7 +108,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-08",
-        name: "E. Haalund",
+        name: "V. Kholi",
         position: "MID",
         attributes: {
           pace: 67,
@@ -120,7 +121,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-09",
-        name: "R. Corhurst",
+        name: "H. Deshporey",
         position: "MID",
         attributes: {
           pace: 75,
@@ -133,7 +134,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-10",
-        name: "D. Vexwood",
+        name: "S. Nayaja",
         position: "MID",
         attributes: {
           pace: 75,
@@ -146,7 +147,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-11",
-        name: "L. Yorwood",
+        name: "B. Revekh",
         position: "MID",
         attributes: {
           pace: 67,
@@ -159,7 +160,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-12",
-        name: "N. Lunley",
+        name: "D. Tripwal",
         position: "MID",
         attributes: {
           pace: 66,
@@ -172,7 +173,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-13",
-        name: "L. Halworth",
+        name: "P. Mehravan",
         position: "FWD",
         attributes: {
           pace: 80,
@@ -185,7 +186,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-14",
-        name: "G. Gorgate",
+        name: "V. Lakhesh",
         position: "FWD",
         attributes: {
           pace: 76,
@@ -198,7 +199,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-15",
-        name: "G. Gorton",
+        name: "V. Lakhwar",
         position: "FWD",
         attributes: {
           pace: 78,
@@ -211,7 +212,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "meridian-city-16",
-        name: "O. Yorhurst",
+        name: "G. Sathasan",
         position: "FWD",
         attributes: {
           pace: 80,
@@ -234,7 +235,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "redbrook-united-01",
-        name: "C. Yorwick",
+        name: "R. Revekar",
         position: "GK",
         attributes: {
           pace: 51,
@@ -247,7 +248,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-02",
-        name: "C. Elsdale",
+        name: "R. Jhaasan",
         position: "GK",
         attributes: {
           pace: 53,
@@ -260,7 +261,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-03",
-        name: "L. Meddi",
+        name: "R. Sharman",
         position: "DEF",
         attributes: {
           pace: 65,
@@ -273,7 +274,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-04",
-        name: "B. Vexwood",
+        name: "R. Nayekh",
         position: "DEF",
         attributes: {
           pace: 78,
@@ -286,7 +287,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-05",
-        name: "G. Irshaw",
+        name: "V. Patan",
         position: "DEF",
         attributes: {
           pace: 73,
@@ -299,7 +300,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-06",
-        name: "L. Wrenburn",
+        name: "B. Revesh",
         position: "DEF",
         attributes: {
           pace: 77,
@@ -312,7 +313,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-07",
-        name: "V. Yorstone",
+        name: "L. Sathorey",
         position: "DEF",
         attributes: {
           pace: 68,
@@ -325,7 +326,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-08",
-        name: "C. Renaldo",
+        name: "M. Dhomi",
         position: "MID",
         attributes: {
           pace: 73,
@@ -338,7 +339,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-09",
-        name: "O. Corworth",
+        name: "G. Chanavan",
         position: "MID",
         attributes: {
           pace: 78,
@@ -351,7 +352,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-10",
-        name: "R. Gorhurst",
+        name: "H. Lakhasan",
         position: "MID",
         attributes: {
           pace: 66,
@@ -364,7 +365,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-11",
-        name: "D. Osmore",
+        name: "S. Raoan",
         position: "MID",
         attributes: {
           pace: 62,
@@ -377,7 +378,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-12",
-        name: "H. Morton",
+        name: "M. Vergar",
         position: "MID",
         attributes: {
           pace: 67,
@@ -390,7 +391,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-13",
-        name: "J. Quengate",
+        name: "N. Tagesh",
         position: "FWD",
         attributes: {
           pace: 71,
@@ -403,7 +404,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-14",
-        name: "N. Jovworth",
+        name: "D. Ragavan",
         position: "FWD",
         attributes: {
           pace: 87,
@@ -416,7 +417,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-15",
-        name: "O. Nashby",
+        name: "G. Senkar",
         position: "FWD",
         attributes: {
           pace: 81,
@@ -429,7 +430,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "redbrook-united-16",
-        name: "V. Irdale",
+        name: "T. Naraasan",
         position: "FWD",
         attributes: {
           pace: 72,
@@ -452,7 +453,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "riverside-reds-01",
-        name: "V. Tormore",
+        name: "L. Kapan",
         position: "GK",
         attributes: {
           pace: 52,
@@ -465,7 +466,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-02",
-        name: "K. Nashgate",
+        name: "N. Senesh",
         position: "GK",
         attributes: {
           pace: 54,
@@ -478,7 +479,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-03",
-        name: "K. De Brayne",
+        name: "S. Ganguly",
         position: "DEF",
         attributes: {
           pace: 71,
@@ -491,7 +492,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-04",
-        name: "F. Ridgate",
+        name: "V. Bhasesh",
         position: "DEF",
         attributes: {
           pace: 63,
@@ -504,7 +505,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-05",
-        name: "J. Fengate",
+        name: "N. Kulesh",
         position: "DEF",
         attributes: {
           pace: 79,
@@ -517,7 +518,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-06",
-        name: "K. Wrenstone",
+        name: "N. Revekh",
         position: "DEF",
         attributes: {
           pace: 64,
@@ -530,7 +531,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-07",
-        name: "N. Vexbrook",
+        name: "D. Pillekh",
         position: "DEF",
         attributes: {
           pace: 80,
@@ -543,7 +544,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-08",
-        name: "M. Salahni",
+        name: "R. Dravidi",
         position: "MID",
         attributes: {
           pace: 69,
@@ -556,7 +557,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-09",
-        name: "M. Cormore",
+        name: "B. Chanwar",
         position: "MID",
         attributes: {
           pace: 73,
@@ -569,7 +570,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-10",
-        name: "P. Gorstone",
+        name: "H. Lakhorey",
         position: "MID",
         attributes: {
           pace: 80,
@@ -582,7 +583,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-11",
-        name: "W. Morby",
+        name: "T. Verkar",
         position: "MID",
         attributes: {
           pace: 67,
@@ -595,7 +596,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-12",
-        name: "N. Irmore",
+        name: "D. Naraan",
         position: "MID",
         attributes: {
           pace: 69,
@@ -608,7 +609,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-13",
-        name: "O. Morley",
+        name: "D. Verande",
         position: "FWD",
         attributes: {
           pace: 71,
@@ -621,7 +622,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-14",
-        name: "R. Nashbrook",
+        name: "H. Yadadan",
         position: "FWD",
         attributes: {
           pace: 78,
@@ -634,7 +635,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-15",
-        name: "K. Stelhurst",
+        name: "N. Chopasan",
         position: "FWD",
         attributes: {
           pace: 85,
@@ -647,7 +648,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "riverside-reds-16",
-        name: "D. Pellstone",
+        name: "S. Raoorey",
         position: "FWD",
         attributes: {
           pace: 86,
@@ -670,7 +671,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "stamford-lions-01",
-        name: "H. Vexford",
+        name: "M. Pillande",
         position: "GK",
         attributes: {
           pace: 43,
@@ -683,7 +684,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-02",
-        name: "F. Yorby",
+        name: "V. Revkar",
         position: "GK",
         attributes: {
           pace: 55,
@@ -696,7 +697,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-03",
-        name: "V. Van Dyke",
+        name: "K. Rahulan",
         position: "DEF",
         attributes: {
           pace: 74,
@@ -709,7 +710,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-04",
-        name: "K. Vexstone",
+        name: "P. Pillorey",
         position: "DEF",
         attributes: {
           pace: 75,
@@ -722,7 +723,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-05",
-        name: "S. Halshaw",
+        name: "J. Naraan",
         position: "DEF",
         attributes: {
           pace: 68,
@@ -735,7 +736,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-06",
-        name: "D. Lunburn",
+        name: "S. Singaja",
         position: "DEF",
         attributes: {
           pace: 71,
@@ -748,7 +749,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-07",
-        name: "J. Gorfield",
+        name: "N. Mehron",
         position: "DEF",
         attributes: {
           pace: 76,
@@ -761,7 +762,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-08",
-        name: "R. Lewangolski",
+        name: "H. Pandey",
         position: "MID",
         attributes: {
           pace: 67,
@@ -774,7 +775,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-09",
-        name: "C. Nashfield",
+        name: "R. Yadan",
         position: "MID",
         attributes: {
           pace: 62,
@@ -787,7 +788,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-10",
-        name: "L. Vexley",
+        name: "B. Naywal",
         position: "MID",
         attributes: {
           pace: 72,
@@ -800,7 +801,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-11",
-        name: "G. Corby",
+        name: "V. Deshpkar",
         position: "MID",
         attributes: {
           pace: 61,
@@ -813,7 +814,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-12",
-        name: "A. Pellford",
+        name: "A. Raoande",
         position: "MID",
         attributes: {
           pace: 63,
@@ -826,7 +827,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-13",
-        name: "H. Oswood",
+        name: "M. Senekh",
         position: "FWD",
         attributes: {
           pace: 86,
@@ -839,7 +840,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-14",
-        name: "C. Bramby",
+        name: "R. Chankar",
         position: "FWD",
         attributes: {
           pace: 84,
@@ -852,7 +853,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-15",
-        name: "R. Quenstone",
+        name: "H. Sriorey",
         position: "FWD",
         attributes: {
           pace: 69,
@@ -865,7 +866,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "stamford-lions-16",
-        name: "S. Riddale",
+        name: "J. Bhasasan",
         position: "FWD",
         attributes: {
           pace: 79,
@@ -888,7 +889,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "highbury-gunners-01",
-        name: "A. Ullworth",
+        name: "A. Nayavan",
         position: "GK",
         attributes: {
           pace: 43,
@@ -901,7 +902,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-02",
-        name: "P. Elsworth",
+        name: "G. Jhaavan",
         position: "GK",
         attributes: {
           pace: 55,
@@ -914,7 +915,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-03",
-        name: "N. Kantay",
+        name: "J. Bhumra",
         position: "DEF",
         attributes: {
           pace: 65,
@@ -927,7 +928,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-04",
-        name: "M. Gorfield",
+        name: "B. Mehron",
         position: "DEF",
         attributes: {
           pace: 74,
@@ -940,7 +941,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-05",
-        name: "B. Nashfield",
+        name: "A. Yadon",
         position: "DEF",
         attributes: {
           pace: 63,
@@ -953,7 +954,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-06",
-        name: "H. Lunstone",
+        name: "M. Triporey",
         position: "DEF",
         attributes: {
           pace: 65,
@@ -966,7 +967,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-07",
-        name: "G. Elsfield",
+        name: "M. Jhaon",
         position: "DEF",
         attributes: {
           pace: 70,
@@ -979,7 +980,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-08",
-        name: "J. Grealsh",
+        name: "A. Kumbley",
         position: "MID",
         attributes: {
           pace: 66,
@@ -992,7 +993,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-09",
-        name: "D. Yorford",
+        name: "S. Sathande",
         position: "MID",
         attributes: {
           pace: 63,
@@ -1005,7 +1006,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-10",
-        name: "D. Lunstone",
+        name: "S. Tripekh",
         position: "MID",
         attributes: {
           pace: 71,
@@ -1018,7 +1019,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-11",
-        name: "O. Ridley",
+        name: "G. Bhaswal",
         position: "MID",
         attributes: {
           pace: 77,
@@ -1031,7 +1032,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-12",
-        name: "C. Torstone",
+        name: "R. Malekh",
         position: "MID",
         attributes: {
           pace: 66,
@@ -1044,7 +1045,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-13",
-        name: "J. Fenstone",
+        name: "N. Kulekh",
         position: "FWD",
         attributes: {
           pace: 85,
@@ -1057,7 +1058,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-14",
-        name: "V. Torworth",
+        name: "L. Malavan",
         position: "FWD",
         attributes: {
           pace: 76,
@@ -1070,7 +1071,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-15",
-        name: "V. Fenshaw",
+        name: "L. Kulan",
         position: "FWD",
         attributes: {
           pace: 86,
@@ -1083,7 +1084,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "highbury-gunners-16",
-        name: "B. Vexwood",
+        name: "R. Pillaja",
         position: "FWD",
         attributes: {
           pace: 87,
@@ -1106,7 +1107,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "lilywhite-athletic-01",
-        name: "W. Nashburn",
+        name: "T. Senesh",
         position: "GK",
         attributes: {
           pace: 40,
@@ -1119,7 +1120,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-02",
-        name: "V. Bramburn",
+        name: "T. Bansalesh",
         position: "GK",
         attributes: {
           pace: 42,
@@ -1132,7 +1133,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-03",
-        name: "P. Fodden",
+        name: "Y. Singhi",
         position: "DEF",
         attributes: {
           pace: 62,
@@ -1145,7 +1146,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-04",
-        name: "G. Ashburn",
+        name: "V. Ashesh",
         position: "DEF",
         attributes: {
           pace: 71,
@@ -1158,7 +1159,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-05",
-        name: "C. Nashley",
+        name: "R. Yadwal",
         position: "DEF",
         attributes: {
           pace: 76,
@@ -1171,7 +1172,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-06",
-        name: "D. Pellton",
+        name: "S. Raowar",
         position: "DEF",
         attributes: {
           pace: 68,
@@ -1184,7 +1185,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-07",
-        name: "G. Nashshaw",
+        name: "V. Senesh",
         position: "DEF",
         attributes: {
           pace: 67,
@@ -1197,7 +1198,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-08",
-        name: "B. Saka",
+        name: "R. Jadhav",
         position: "MID",
         attributes: {
           pace: 62,
@@ -1210,7 +1211,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-09",
-        name: "J. Ashton",
+        name: "N. Ashwar",
         position: "MID",
         attributes: {
           pace: 62,
@@ -1223,7 +1224,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-10",
-        name: "M. Nashworth",
+        name: "B. Yadavan",
         position: "MID",
         attributes: {
           pace: 66,
@@ -1236,7 +1237,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-11",
-        name: "M. Wrenton",
+        name: "B. Revgar",
         position: "MID",
         attributes: {
           pace: 59,
@@ -1249,7 +1250,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-12",
-        name: "F. Fenstone",
+        name: "V. Kulekh",
         position: "MID",
         attributes: {
           pace: 66,
@@ -1262,7 +1263,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-13",
-        name: "N. Irshaw",
+        name: "D. Patan",
         position: "FWD",
         attributes: {
           pace: 69,
@@ -1275,7 +1276,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-14",
-        name: "T. Dunwood",
+        name: "J. Deshpekh",
         position: "FWD",
         attributes: {
           pace: 68,
@@ -1288,7 +1289,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-15",
-        name: "V. Vexfield",
+        name: "L. Nayon",
         position: "FWD",
         attributes: {
           pace: 83,
@@ -1301,7 +1302,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "lilywhite-athletic-16",
-        name: "J. Fenford",
+        name: "N. Kulande",
         position: "FWD",
         attributes: {
           pace: 75,
@@ -1324,7 +1325,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "mersey-toffees-01",
-        name: "E. Ullburn",
+        name: "K. Malesh",
         position: "GK",
         attributes: {
           pace: 39,
@@ -1337,7 +1338,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-02",
-        name: "G. Nashwick",
+        name: "M. Yadgar",
         position: "GK",
         attributes: {
           pace: 47,
@@ -1350,7 +1351,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-03",
-        name: "T. Kroon",
+        name: "V. Sehvag",
         position: "DEF",
         attributes: {
           pace: 67,
@@ -1363,7 +1364,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-04",
-        name: "M. Halfield",
+        name: "B. Mehran",
         position: "DEF",
         attributes: {
           pace: 71,
@@ -1376,7 +1377,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-05",
-        name: "V. Pellfield",
+        name: "L. Srion",
         position: "DEF",
         attributes: {
           pace: 68,
@@ -1389,7 +1390,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-06",
-        name: "D. Lunstone",
+        name: "S. Singekh",
         position: "DEF",
         attributes: {
           pace: 61,
@@ -1402,7 +1403,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-07",
-        name: "N. Dunstone",
+        name: "D. Deshpekh",
         position: "DEF",
         attributes: {
           pace: 63,
@@ -1415,7 +1416,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-08",
-        name: "S. Manet",
+        name: "Z. Khanna",
         position: "MID",
         attributes: {
           pace: 62,
@@ -1428,7 +1429,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-09",
-        name: "F. Jovwick",
+        name: "K. Patekar",
         position: "MID",
         attributes: {
           pace: 59,
@@ -1441,7 +1442,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-10",
-        name: "L. Wrenstone",
+        name: "P. Revekh",
         position: "MID",
         attributes: {
           pace: 73,
@@ -1454,7 +1455,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-11",
-        name: "C. Irshaw",
+        name: "R. Patan",
         position: "MID",
         attributes: {
           pace: 61,
@@ -1467,7 +1468,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-12",
-        name: "E. Ridwick",
+        name: "K. Bhasgar",
         position: "MID",
         attributes: {
           pace: 71,
@@ -1480,7 +1481,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-13",
-        name: "A. Bramley",
+        name: "A. Chanande",
         position: "FWD",
         attributes: {
           pace: 67,
@@ -1493,7 +1494,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-14",
-        name: "R. Bramley",
+        name: "H. Bansalwal",
         position: "FWD",
         attributes: {
           pace: 71,
@@ -1506,7 +1507,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-15",
-        name: "T. Pellmore",
+        name: "L. Srian",
         position: "FWD",
         attributes: {
           pace: 75,
@@ -1519,7 +1520,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "mersey-toffees-16",
-        name: "S. Morford",
+        name: "J. Verande",
         position: "FWD",
         attributes: {
           pace: 73,
@@ -1542,7 +1543,7 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "claret-park-01",
-        name: "P. Vexwood",
+        name: "G. Pillekh",
         position: "GK",
         attributes: {
           pace: 41,
@@ -1555,7 +1556,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-02",
-        name: "S. Kelwood",
+        name: "J. Ragaja",
         position: "GK",
         attributes: {
           pace: 49,
@@ -1568,7 +1569,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-03",
-        name: "H. Kaine",
+        name: "A. Rahane",
         position: "DEF",
         attributes: {
           pace: 62,
@@ -1581,7 +1582,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-04",
-        name: "O. Ashby",
+        name: "D. Ashwal",
         position: "DEF",
         attributes: {
           pace: 64,
@@ -1594,7 +1595,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-05",
-        name: "K. Pellburn",
+        name: "P. Raoesh",
         position: "DEF",
         attributes: {
           pace: 60,
@@ -1607,7 +1608,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-06",
-        name: "L. Ridwood",
+        name: "P. Bhasaja",
         position: "DEF",
         attributes: {
           pace: 60,
@@ -1620,7 +1621,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-07",
-        name: "N. Elsfield",
+        name: "D. Jhaan",
         position: "DEF",
         attributes: {
           pace: 65,
@@ -1633,7 +1634,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-08",
-        name: "D. Alissonn",
+        name: "S. Iyerman",
         position: "MID",
         attributes: {
           pace: 72,
@@ -1646,7 +1647,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-09",
-        name: "J. Oshurst",
+        name: "N. Raoorey",
         position: "MID",
         attributes: {
           pace: 61,
@@ -1659,7 +1660,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-10",
-        name: "W. Irworth",
+        name: "T. Naraavan",
         position: "MID",
         attributes: {
           pace: 70,
@@ -1672,7 +1673,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-11",
-        name: "L. Stelburn",
+        name: "B. Chopesh",
         position: "MID",
         attributes: {
           pace: 59,
@@ -1685,7 +1686,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-12",
-        name: "K. Quenwick",
+        name: "N. Tagekar",
         position: "MID",
         attributes: {
           pace: 59,
@@ -1698,7 +1699,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-13",
-        name: "W. Ridstone",
+        name: "T. Bhasorey",
         position: "FWD",
         attributes: {
           pace: 76,
@@ -1711,7 +1712,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-14",
-        name: "A. Ashmore",
+        name: "A. Bansalan",
         position: "FWD",
         attributes: {
           pace: 81,
@@ -1724,7 +1725,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-15",
-        name: "O. Morfield",
+        name: "G. Yadan",
         position: "FWD",
         attributes: {
           pace: 74,
@@ -1737,7 +1738,7 @@ export const CLUBS: Club[] = [
       },
       {
         id: "claret-park-16",
-        name: "E. Dunby",
+        name: "K. Deshpkar",
         position: "FWD",
         attributes: {
           pace: 68,

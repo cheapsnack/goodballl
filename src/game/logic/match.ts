@@ -6,8 +6,8 @@ import { FIELD, goalLineX } from "./field";
 export const MATCH_TUNING = {
   /** number of periods in a match */
   periods: 2,
-  /** seconds of match clock per period */
-  periodSeconds: 180,
+  /** length of a period in real (wall-clock) seconds — 2 minutes each half */
+  periodSeconds: 120,
   /** how long the GOAL! banner holds before the reset */
   goalCelebration: 3.2,
   /** how long the kickoff freeze lasts before play resumes */
