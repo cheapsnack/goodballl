@@ -21,9 +21,10 @@ export const BALL_TUNING = {
  */
 export const STRIKE_TUNING = {
   /** seconds of holding to reach full power */
-  chargeTime: 0.7,
-  /** power floor on an instant tap (0..1) */
-  minPower: 0.35,
+  /** 0.45s to full charge — snappy; tap for driven strike, hold for maximum power */
+  chargeTime: 0.45,
+  /** power floor on an instant tap — a tap-shot/pass is already usable */
+  minPower: 0.42,
   /** how much of the player's closing speed is added to the strike */
   momentumTransfer: 0.3,
   /** seconds after a strike where the dribble pull is disabled */
@@ -46,28 +47,26 @@ export const STRIKE_TUNING = {
    */
   chargeMoveScale: 0.0,
   /** pass assist blend toward a target (0 = none, 1 = fully homing) */
-  assistWeight: 0.55,
-  /** target must be at least this aligned with facing to attract the pass */
-  assistMinAlignment: 0.35,
-  /**
-   * Shot assist: much lighter than pass assist — nudges a shot toward goal
-   * when you're already roughly facing it, so near-miss aim doesn't feel
-   * unresponsive, but it never aims for you outside that cone.
-   */
+  assistWeight: 0.65,
+  /** target must be at least this aligned — wider cone for more responsive passing */
+  assistMinAlignment: 0.30,
+  /** shot assist — light nudge toward goal only when already roughly on target */
   shotAssistWeight: 0.22,
   shotAssistMinAlignment: 0.55,
 
   shot: {
-    minSpeed: 10,
-    maxSpeed: 22,
+    minSpeed: 12,
+    maxSpeed: 24,
     /** vertical:horizontal ratio with the loft modifier held */
     loftRatio: 0.5,
     /** vertical:horizontal ratio for a driven shot */
     baseLoftRatio: 0.05,
   },
   pass: {
-    minSpeed: 13,
-    maxSpeed: 22,
+    /** tap-pass at 8 m/s — usable for short balls to a nearby teammate */
+    minSpeed: 8,
+    /** full-charge pass at 20 m/s — crosses the pitch cleanly */
+    maxSpeed: 20,
     loftRatio: 0.28,
     baseLoftRatio: 0,
   },
