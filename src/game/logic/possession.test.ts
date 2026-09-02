@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BallState, Kinematics } from "../types";
 import { BALL_RADIUS } from "./ballPhysics";
-import { possessionBallPosition, tryCapture, POSSESSION_TUNING } from "./possession";
+import { possessionBallPosition, tryCapture, trySteal, POSSESSION_TUNING } from "./possession";
 
 const body = (x: number, z: number, heading = 0, vx = 0, vz = 0): Kinematics => ({
   position: { x, y: 0, z },
@@ -69,5 +69,29 @@ describe("tryCapture", () => {
     const candidates = [{ team: "home" as const, index: 2, body: body(0.2, 0) }];
     const result = tryCapture(ball, candidates);
     expect(result?.team).toBe("home");
+  });
+});
+
+describe("trySteal", () => {
+  const carrier = body(10, 5);
+
+  it("grants possession to an opponent within steal radius", () => {
+    const opp = [{ team: "away" as const, index: 2, body: body(10.5, 5) }];
+    const result = trySteal(carrier, opp);
+    expect(result).toEqual({ team: "away", index: 2 });
+  });
+
+  it("returns null when no opponent is close enough", () => {
+    const opp = [{ team: "away" as const, index: 0, body: body(15, 5) }];
+    expect(trySteal(carrier, opp)).toBeNull();
+  });
+
+  it("picks the closest opponent", () => {
+    const opp = [
+      { team: "away" as const, index: 0, body: body(10.8, 5) },
+      { team: "away" as const, index: 3, body: body(10.3, 5) },
+    ];
+    const result = trySteal(carrier, opp);
+    expect(result?.index).toBe(3);
   });
 });
