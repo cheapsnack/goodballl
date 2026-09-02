@@ -13,27 +13,35 @@ export const OUTFIELD_TUNING = {
   pressDeadZone: 0.45,
   /** sprint when the ball is further away than this */
   sprintRange: 6,
-  /** how strongly a holding player's zone shifts with the ball's x */
-  zonalTrackX: 0.45,
-  /** ...and z */
-  zonalTrackZ: 0.55,
+  /**
+   * How much the whole team's zonal anchor shifts with the ball x.
+   * Deliberately LOW so defensive lines don't drag forward — the main
+   * cause of the 7-8 player blob was that ballShift 0.45 pulled the
+   * entire back line towards the ball each frame. The mentality system
+   * applies its own additional per-line shift on top.
+   */
+  zonalTrackX: 0.18,
+  /** z-tracking is fine — stays wide, just tracks the corridor */
+  zonalTrackZ: 0.45,
   /** dead zone before a zonal player bothers repositioning */
   zonalDeadZone: 1.4,
   /**
    * A challenger must be closer than the current chaser by at least this
-   * many metres before the role switches — without this, two players at
-   * near-equal distance flip the chaser role every frame, which reads as
-   * both of them twitching randomly instead of one committing.
+   * many metres before the role switches.
    */
   chaserSwitchMargin: 1.6,
   /**
    * No AI player's *target* is ever set closer than this to the true
-   * touchline/goal-line — they'll still contest a ball that's drifted into
-   * the run-off, but they aim to receive it just inside the line rather
-   * than sprinting flat-out through the corner after it. This is what stops
-   * the "defender chases the ball out and shoves it further out" loop.
+   * touchline/goal-line.
    */
   safeMargin: 2.5,
+  /**
+   * Maximum number of outfield players on the SAME team that can press the
+   * ball simultaneously. In real football only 1–2 players press at any time;
+   * the rest hold shape. Raising this above 1 means the second-nearest also
+   * chases, which reduces the blob by keeping more bodies in formation.
+   */
+  presserCount: 2,
 } as const;
 
 /**
@@ -161,36 +169,44 @@ export function defaultControlledIndex(xi: OutfieldEntity[]): number {
   return idx >= 0 ? idx : 0;
 }
 /**
- * Index of whoever should press the ball out of a group. Sticky: keeps the
- * current chaser unless someone else is closer by more than the switch
- * margin. Pass `currentChaser: -1` when there's no incumbent yet.
+ * Returns the indices of up to `OUTFIELD_TUNING.presserCount` players who
+ * should actively press the ball this frame. Priority: MID/FWD slots first
+ * (they do the running), defenders only join if literally nobody closer is
+ * available. Sticky: the previous presser set is preferred over a nearby
+ * challenger unless the switch margin is exceeded.
  */
-export function nearestChaserIndex(
+export function presserIndices(
   players: Kinematics[],
+  roles: OutfieldRole[],
   ball: BallState,
-  currentChaser = -1,
-): number {
-  let best = -1;
-  let bestDist = Infinity;
-  players.forEach((p, i) => {
-    const dist = distanceToBall(p, ball);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = i;
-    }
+  prevPressers: Set<number>,
+): Set<number> {
+  const t = OUTFIELD_TUNING;
+
+  // Score each player: distance to ball, plus a heavy bias toward MID/FWD.
+  const scored = players.map((p, i) => ({
+    i,
+    dist: distanceToBall(p, ball),
+    // Defenders get a handicap so they only press as a last resort.
+    adjusted: distanceToBall(p, ball) + (roles[i]?.slot.position === "DEF" ? 8 : 0),
+    isPrevPresser: prevPressers.has(i),
+  }));
+
+  // Sort by adjusted distance; give incumbents the switch-margin benefit.
+  scored.sort((a, b) => {
+    const aAdj = a.adjusted - (a.isPrevPresser ? t.chaserSwitchMargin : 0);
+    const bAdj = b.adjusted - (b.isPrevPresser ? t.chaserSwitchMargin : 0);
+    return aAdj - bAdj;
   });
 
-  if (currentChaser >= 0 && currentChaser < players.length && best !== currentChaser) {
-    const incumbentDist = distanceToBall(players[currentChaser]!, ball);
-    if (incumbentDist - bestDist < OUTFIELD_TUNING.chaserSwitchMargin) {
-      return currentChaser;
-    }
+  const next = new Set<number>();
+  for (let k = 0; k < Math.min(t.presserCount, scored.length); k++) {
+    next.add(scored[k]!.i);
   }
-
-  return best;
+  return next;
 }
 
-/** Index of whoever is nearest the ball — used for player-switching (no hysteresis; a deliberate press should always pick truly nearest). */
+/** Index of whoever is nearest the ball — used for player-switching (no hysteresis). */
 export function nearestToBallIndex(players: Kinematics[], ball: BallState): number {
   let best = 0;
   let bestDist = Infinity;

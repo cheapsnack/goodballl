@@ -22,7 +22,7 @@ import {
 import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
 import {
   buildOutfield,
-  nearestChaserIndex,
+  presserIndices,
   nearestToBallIndex,
   stepOutfield,
   dribbleTowardGoal,
@@ -117,8 +117,8 @@ export function MatchScene() {
     position: { x: 0, y: 26, z: 30 },
     lookAt: { x: 0, y: 0, z: 0 },
   });
-  /** Sticky chaser index per team so players don't flicker who's pressing. */
-  const chaserRef = useRef({ home: -1, away: -1 });
+  /** Sticky presser sets so players don't flicker who's pressing. */
+  const chaserRef = useRef({ home: new Set<number>(), away: new Set<number>() });
   /** Edge-detects held-boolean keys (camera toggle, player switch). */
   const keyEdge = useRef({ camera: false, switchPlayer: false, tackle: false });
   /** Host-side: edge-detects the guest's switch-player key from the network stream. */
@@ -669,8 +669,8 @@ export function MatchScene() {
     // Movement resolves first, using last frame's ball position for chase/
     // zonal targeting; final ball placement (glued to whoever ends up with
     // it) happens afterward, once everyone's new position is known.
-    const homeChaser = nearestChaserIndex(store.homeOutfield, store.ball, chaserRef.current.home);
-    chaserRef.current.home = homeChaser;
+    const homePressers = presserIndices(store.homeOutfield, homeXI.map(e => e.role), store.ball, chaserRef.current.home);
+    chaserRef.current.home = homePressers;
     const homeGoalX = -HOME_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — home attacks here
     const homeOutfield = store.homeOutfield.map((p, i) => {
       if (i === controlledIndex) return controlled;
@@ -678,8 +678,7 @@ export function MatchScene() {
       const shotState = homeShotState[i]!;
       shotState.cooldown = Math.max(0, shotState.cooldown - dt);
 
-      // Mid wind-up takes priority over everything else — finish the motion
-      // before making any new decision, so a shot always actually fires.
+      // Mid wind-up takes priority over everything else.
       if (shotState.windupUntil > 0) {
         if (state.clock.elapsedTime >= shotState.windupUntil) {
           if (restartLock === null || restartLock === "home") {
@@ -707,8 +706,6 @@ export function MatchScene() {
       if (iAmPossessor && (restartLock === null || restartLock === "home")) {
         const distToGoal = Math.hypot(homeGoalX - p.position.x, p.position.z);
         if (shotState.cooldown <= 0 && distToGoal < diff.shootRange) {
-          // Decide now, strike after a short wind-up — a cheap stand-in for
-          // reaction time that also gives the shot a readable animation beat.
           shotState.windupUntil = state.clock.elapsedTime + diff.shotWindup;
           shotState.windupDir = aiShotDirection(p, homeGoalX, diff.shotAccuracy);
           return clampToPitch(
@@ -722,34 +719,29 @@ export function MatchScene() {
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const isChaserNow = i === homeChaser;
-      // If the opponent has the ball and we're a defensive-line/mid player,
-      // jockey instead of holding a static zone — that's what makes the
-      // AI "come out to press" rather than just standing there.
+      const isPresserNow = homePressers.has(i);
+      // Non-pressers: if opponent has the ball, jockey (DEF/MID only —
+      // FWDs stay high to create space for a quick transition).
       const carrier: Kinematics | null =
         possession && possession.team === "away"
           ? hasAwayHuman && possession.index === awayControlledIndex && awayControlled
             ? awayControlled
             : store.awayOutfield[possession.index]!
           : null;
-      if (
-        !isChaserNow &&
-        carrier &&
-        homeXI[i]!.role.slot.position !== "FWD" // forwards keep pushing up instead of tracking back
-      ) {
+      if (!isPresserNow && carrier && homeXI[i]!.role.slot.position !== "FWD") {
         const ai = jockeyDefender(p, carrier, HOME_DEFEND_SIDE * PITCH.halfLength, store.homeOutfield);
         const params = scaleParams(homeParams[i] ?? homeParams[0]!);
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const ai = stepOutfield(p, homeXI[i]!.role, store.ball, isChaserNow, mentality);
+      const ai = stepOutfield(p, homeXI[i]!.role, store.ball, isPresserNow, mentality);
       const params = scaleParams(homeParams[i] ?? homeParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
 
     // --- away outfield (AI, except a connected guest's/local P2's player) ---
-    const awayChaser = nearestChaserIndex(store.awayOutfield, store.ball, chaserRef.current.away);
-    chaserRef.current.away = awayChaser;
+    const awayPressers = presserIndices(store.awayOutfield, awayXI.map(e => e.role), store.ball, chaserRef.current.away);
+    chaserRef.current.away = awayPressers;
     const awayGoalX = -AWAY_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — away attacks here
     const awayOutfield = store.awayOutfield.map((p, i) => {
       if (hasAwayHuman && i === awayControlledIndex && awayControlled) return awayControlled;
@@ -797,24 +789,20 @@ export function MatchScene() {
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const isChaserNow = i === awayChaser;
+      const isPresserNow = awayPressers.has(i);
       const carrier: Kinematics | null =
         possession && possession.team === "home"
           ? possession.index === controlledIndex
             ? controlled
             : store.homeOutfield[possession.index]!
           : null;
-      if (
-        !isChaserNow &&
-        carrier &&
-        awayXI[i]!.role.slot.position !== "FWD"
-      ) {
+      if (!isPresserNow && carrier && awayXI[i]!.role.slot.position !== "FWD") {
         const ai = jockeyDefender(p, carrier, AWAY_DEFEND_SIDE * PITCH.halfLength, store.awayOutfield);
         const params = scaleParams(awayParams[i] ?? awayParams[0]!);
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const ai = stepOutfield(p, awayXI[i]!.role, store.ball, isChaserNow, mentality);
+      const ai = stepOutfield(p, awayXI[i]!.role, store.ball, isPresserNow, mentality);
       const params = scaleParams(awayParams[i] ?? awayParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
@@ -868,11 +856,17 @@ export function MatchScene() {
         tackleState.current.active = 0;
         playKick(0.55);
       } else {
-        // Whiffed on the ball but check for a foul on any away player.
+        // Missed the ball — check if the tackle dash hit an opponent's body.
+        // This is separate from steal (which already fired above if close enough):
+        // a foul fires when you were close enough to an opponent's body but
+        // not close enough to the ball to win it cleanly.
         const victim = detectFoulOnOpponent(controlled.position, store.awayOutfield);
         if (victim !== null) {
           stageBooking("home", controlledIndex);
           tackleState.current.active = 0;
+          // Also: a foul ends possession for the victim (the challenge is
+          // clumsy but real — the ball is loose now).
+          if (possession?.team === "away") possession = null;
         }
       }
     }
@@ -899,6 +893,7 @@ export function MatchScene() {
         if (victim !== null) {
           stageBooking("away", awayControlledIndex ?? 0);
           awayTackleState.current.active = 0;
+          if (possession?.team === "home") possession = null;
         }
       }
     }
