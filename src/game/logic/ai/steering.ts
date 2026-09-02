@@ -9,8 +9,8 @@ import type { Kinematics } from "../../types";
  * my teammate") rather than a single hardcoded rule.
  */
 export const STEERING_TUNING = {
-  /** how far a dribbler looks ahead for defenders to steer around */
-  avoidLookahead: 6,
+  /** how far a dribbler looks ahead for defenders to steer around — longer = earlier arc, less last-second swerve */
+  avoidLookahead: 10,
   /** how strongly a nearby opponent pushes the dribble path sideways */
   avoidStrength: 3.5,
   /** ignore opponents further than this from the dribble path */
@@ -25,8 +25,7 @@ export const STEERING_TUNING = {
   separationWeight: 1.3,
   /**
    * A jockeying defender sits this far from the carrier on the goal-side —
-   * close enough to threaten, far enough not to just charge in. Real FIFA
-   * AI defenders "contain" rather than auto-lunge; that's this number.
+   * close enough to threaten, far enough not to just charge in.
    */
   jockeyDistance: 2.5,
   /** how quickly a jockey shadows sideways motion (0..1) */

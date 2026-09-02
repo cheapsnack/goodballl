@@ -12,7 +12,7 @@ import {
   type KeeperState,
 } from "./goalkeeper";
 import {
-  nearestChaserIndex,
+  presserIndices,
   OUTFIELD_TUNING,
   stepOutfield,
   zonalAnchor,
@@ -198,10 +198,24 @@ describe("outfield AI", () => {
     { id: "r", defendSide: SIDE, slot: { position: "DEF", depth: 20, z: 8.5 } },
   ];
 
-  it("picks the closest player as the chaser", () => {
-    const ds = [body(20, -12), body(20, 10)];
-    expect(nearestChaserIndex(ds, ballAt(20, 9))).toBe(1);
-    expect(nearestChaserIndex(ds, ballAt(20, -13))).toBe(0);
+  it("picks the closest MID/FWD as presser, avoiding DEF when alternatives exist", () => {
+    const midRole: OutfieldRole = { id: "m", defendSide: SIDE, slot: { position: "MID", depth: 34, z: 0 } };
+    const defRole: OutfieldRole = { id: "d", defendSide: SIDE, slot: { position: "DEF", depth: 18, z: 0 } };
+    // MID is slightly further from the ball but not handicapped; DEF gets an 8m handicap
+    const players = [body(25, 9), body(25, 8)]; // both roughly equidistant to ball(20,9)
+    const roleList = [defRole, midRole];
+    const set = presserIndices(players, roleList, ballAt(20, 9), new Set());
+    // The mid (index 1) should be preferred despite being 1m further
+    expect(set.has(1)).toBe(true);
+  });
+
+  it("returns up to presserCount players", () => {
+    const role: OutfieldRole = { id: "m", defendSide: SIDE, slot: { position: "MID", depth: 34, z: 0 } };
+    const players = [body(20, 0), body(21, 0), body(22, 0), body(30, 0)];
+    const roles = [role, role, role, role];
+    const set = presserIndices(players, roles, ballAt(20, 0), new Set());
+    expect(set.size).toBeLessThanOrEqual(OUTFIELD_TUNING.presserCount);
+    expect(set.size).toBeGreaterThan(0);
   });
 
   it("chaser steers toward the ball", () => {
