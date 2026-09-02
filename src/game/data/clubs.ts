@@ -1,8 +1,8 @@
-// AUTO-GENERATED squad data. Fictional Indian-style parody names,
-// keeping the "initial + surname" convention. No real club or player
-// names are used — regenerate via the generator script if you need
-// different squads; do not hand-edit attribute numbers without also
-// updating the generator.
+// AUTO-GENERATED squad data — parody international names (Cricket 97/98 style).
+// No real player's full name is used. Invented surnames merely evoke real
+// footballers from PL / La Liga / Bundesliga / Ligue 1 / international squads.
+// Club IDs unchanged — no preferences or references break.
+// Re-run the generator script to change names; do not hand-edit attributes.
 
 import type { Club } from "../types";
 
@@ -17,124 +17,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "meridian-city-01",
-        name: "S. Chopavan",
+        name: "D. Wallsend",
         position: "GK",
         attributes: {
-          pace: 56,
-          shot: 49,
-          pass: 67,
-          dribble: 67,
-          defend: 62,
-          gk: 93
+          pace: 54,
+          shot: 54,
+          pass: 61,
+          dribble: 69,
+          defend: 55,
+          gk: 99
         }
       },
       {
         id: "meridian-city-02",
-        name: "R. Patekh",
+        name: "F. Caldwick",
         position: "GK",
         attributes: {
           pace: 51,
-          shot: 58,
-          pass: 63,
-          dribble: 58,
-          defend: 45,
-          gk: 97
+          shot: 57,
+          pass: 61,
+          dribble: 72,
+          defend: 53,
+          gk: 91
         }
       },
       {
         id: "meridian-city-03",
-        name: "S. Tenduker",
+        name: "H. Kayne",
         position: "DEF",
         attributes: {
-          pace: 68,
-          shot: 56,
-          pass: 59,
-          dribble: 57,
-          defend: 91,
-          gk: 7
-        }
-      },
-      {
-        id: "meridian-city-04",
-        name: "B. Bansalon",
-        position: "DEF",
-        attributes: {
-          pace: 72,
-          shot: 56,
-          pass: 71,
-          dribble: 68,
-          defend: 80,
-          gk: 17
-        }
-      },
-      {
-        id: "meridian-city-05",
-        name: "S. Verkar",
-        position: "DEF",
-        attributes: {
-          pace: 66,
-          shot: 45,
+          pace: 65,
+          shot: 50,
           pass: 55,
-          dribble: 73,
-          defend: 87,
-          gk: 15
-        }
-      },
-      {
-        id: "meridian-city-06",
-        name: "H. Naraorey",
-        position: "DEF",
-        attributes: {
-          pace: 73,
-          shot: 59,
-          pass: 57,
-          dribble: 61,
-          defend: 90,
-          gk: 25
-        }
-      },
-      {
-        id: "meridian-city-07",
-        name: "N. Patorey",
-        position: "DEF",
-        attributes: {
-          pace: 79,
-          shot: 54,
-          pass: 65,
-          dribble: 64,
-          defend: 95,
-          gk: 14
-        }
-      },
-      {
-        id: "meridian-city-08",
-        name: "V. Kholi",
-        position: "MID",
-        attributes: {
-          pace: 67,
-          shot: 68,
-          pass: 91,
-          dribble: 84,
-          defend: 61,
+          dribble: 60,
+          defend: 93,
           gk: 10
         }
       },
       {
-        id: "meridian-city-09",
-        name: "H. Deshporey",
-        position: "MID",
+        id: "meridian-city-04",
+        name: "P. Brentwood",
+        position: "DEF",
         attributes: {
           pace: 75,
-          shot: 67,
+          shot: 43,
+          pass: 62,
+          dribble: 72,
+          defend: 87,
+          gk: 30
+        }
+      },
+      {
+        id: "meridian-city-05",
+        name: "P. Elmsworth",
+        position: "DEF",
+        attributes: {
+          pace: 67,
+          shot: 45,
+          pass: 64,
+          dribble: 56,
+          defend: 91,
+          gk: 10
+        }
+      },
+      {
+        id: "meridian-city-06",
+        name: "A. Edgewick",
+        position: "DEF",
+        attributes: {
+          pace: 72,
+          shot: 45,
+          pass: 68,
+          dribble: 62,
+          defend: 93,
+          gk: 17
+        }
+      },
+      {
+        id: "meridian-city-07",
+        name: "Y. Harrow",
+        position: "DEF",
+        attributes: {
+          pace: 69,
+          shot: 53,
+          pass: 71,
+          dribble: 64,
+          defend: 86,
+          gk: 16
+        }
+      },
+      {
+        id: "meridian-city-08",
+        name: "B. Sako",
+        position: "MID",
+        attributes: {
+          pace: 79,
+          shot: 74,
           pass: 90,
-          dribble: 85,
-          defend: 72,
-          gk: 28
+          dribble: 80,
+          defend: 75,
+          gk: 14
+        }
+      },
+      {
+        id: "meridian-city-09",
+        name: "D. Oldham",
+        position: "MID",
+        attributes: {
+          pace: 76,
+          shot: 74,
+          pass: 81,
+          dribble: 74,
+          defend: 73,
+          gk: 20
         }
       },
       {
         id: "meridian-city-10",
-        name: "S. Nayaja",
+        name: "R. Yarwick",
+        position: "MID",
+        attributes: {
+          pace: 69,
+          shot: 73,
+          pass: 92,
+          dribble: 85,
+          defend: 74,
+          gk: 24
+        }
+      },
+      {
+        id: "meridian-city-11",
+        name: "V. Zeldham",
         position: "MID",
         attributes: {
           pace: 75,
@@ -142,85 +155,72 @@ export const CLUBS: Club[] = [
           pass: 83,
           dribble: 79,
           defend: 68,
-          gk: 15
-        }
-      },
-      {
-        id: "meridian-city-11",
-        name: "B. Revekh",
-        position: "MID",
-        attributes: {
-          pace: 67,
-          shot: 65,
-          pass: 91,
-          dribble: 90,
-          defend: 61,
           gk: 18
         }
       },
       {
         id: "meridian-city-12",
-        name: "D. Tripwal",
+        name: "Z. Yeatham",
         position: "MID",
         attributes: {
-          pace: 66,
-          shot: 78,
-          pass: 90,
-          dribble: 87,
-          defend: 67,
-          gk: 22
+          pace: 74,
+          shot: 65,
+          pass: 82,
+          dribble: 84,
+          defend: 77,
+          gk: 14
         }
       },
       {
         id: "meridian-city-13",
-        name: "P. Mehravan",
+        name: "P. Stockwell",
         position: "FWD",
         attributes: {
-          pace: 80,
-          shot: 95,
-          pass: 73,
-          dribble: 87,
-          defend: 54,
-          gk: 16
+          pace: 74,
+          shot: 98,
+          pass: 66,
+          dribble: 92,
+          defend: 55,
+          gk: 22
         }
       },
       {
         id: "meridian-city-14",
-        name: "V. Lakhesh",
+        name: "J. Upshire",
         position: "FWD",
         attributes: {
-          pace: 76,
-          shot: 97,
-          pass: 80,
-          dribble: 92,
-          defend: 58,
-          gk: 11
+          pace: 78,
+          shot: 92,
+          pass: 66,
+          dribble: 84,
+          defend: 57,
+          gk: 21
         }
       },
       {
         id: "meridian-city-15",
-        name: "V. Lakhwar",
+        name: "N. Rainford",
         position: "FWD",
         attributes: {
           pace: 78,
-          shot: 99,
-          pass: 82,
-          dribble: 90,
-          defend: 56,
-          gk: 23
+          shot: 87,
+          pass: 73,
+          dribble: 77,
+          defend: 48,
+          gk: 31
         }
       },
       {
         id: "meridian-city-16",
-        name: "G. Sathasan",
+        name: "V. Whitmore",
         position: "FWD",
         attributes: {
-          pace: 80,
-          shot: 93,
-          pass: 76,
-          dribble: 92,
-          defend: 53,
-          gk: 19
+          pace: 77,
+          shot: 88,
+          pass: 69,
+          dribble: 82,
+          defend: 50,
+          gk: 27
         }
       }
     ]
@@ -235,124 +235,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "redbrook-united-01",
-        name: "R. Revekar",
+        name: "C. Edgewick",
         position: "GK",
         attributes: {
-          pace: 51,
-          shot: 46,
-          pass: 57,
-          dribble: 63,
-          defend: 48,
-          gk: 92
+          pace: 46,
+          shot: 49,
+          pass: 58,
+          dribble: 59,
+          defend: 51,
+          gk: 93
         }
       },
       {
         id: "redbrook-united-02",
-        name: "R. Jhaasan",
+        name: "G. Dunfield",
         position: "GK",
         attributes: {
-          pace: 53,
+          pace: 45,
           shot: 52,
-          pass: 57,
-          dribble: 63,
-          defend: 44,
-          gk: 99
+          pass: 63,
+          dribble: 66,
+          defend: 47,
+          gk: 96
         }
       },
       {
         id: "redbrook-united-03",
-        name: "R. Sharman",
+        name: "D. Saloah",
         position: "DEF",
         attributes: {
-          pace: 65,
-          shot: 54,
-          pass: 54,
-          dribble: 62,
-          defend: 85,
-          gk: 22
+          pace: 64,
+          shot: 57,
+          pass: 58,
+          dribble: 57,
+          defend: 91,
+          gk: 16
         }
       },
       {
         id: "redbrook-united-04",
-        name: "R. Nayekh",
+        name: "L. Salwick",
         position: "DEF",
         attributes: {
-          pace: 78,
-          shot: 43,
-          pass: 62,
-          dribble: 59,
-          defend: 94,
-          gk: 14
-        }
-      },
-      {
-        id: "redbrook-united-05",
-        name: "V. Patan",
-        position: "DEF",
-        attributes: {
-          pace: 73,
-          shot: 54,
-          pass: 61,
-          dribble: 58,
-          defend: 78,
-          gk: 26
-        }
-      },
-      {
-        id: "redbrook-united-06",
-        name: "B. Revesh",
-        position: "DEF",
-        attributes: {
-          pace: 77,
-          shot: 40,
-          pass: 69,
+          pace: 64,
+          shot: 56,
+          pass: 67,
           dribble: 65,
-          defend: 84,
+          defend: 93,
           gk: 18
         }
       },
       {
-        id: "redbrook-united-07",
-        name: "L. Sathorey",
+        id: "redbrook-united-05",
+        name: "G. Foxham",
         position: "DEF",
         attributes: {
-          pace: 68,
+          pace: 64,
+          shot: 45,
+          pass: 58,
+          dribble: 71,
+          defend: 91,
+          gk: 27
+        }
+      },
+      {
+        id: "redbrook-united-06",
+        name: "M. Ipsdale",
+        position: "DEF",
+        attributes: {
+          pace: 63,
+          shot: 52,
+          pass: 62,
+          dribble: 71,
+          defend: 93,
+          gk: 22
+        }
+      },
+      {
+        id: "redbrook-united-07",
+        name: "A. Cresswell",
+        position: "DEF",
+        attributes: {
+          pace: 73,
           shot: 47,
-          pass: 66,
-          dribble: 62,
-          defend: 92,
-          gk: 19
+          pass: 62,
+          dribble: 70,
+          defend: 94,
+          gk: 24
         }
       },
       {
         id: "redbrook-united-08",
-        name: "M. Dhomi",
+        name: "R. Stirlin",
         position: "MID",
         attributes: {
-          pace: 73,
-          shot: 74,
+          pace: 68,
+          shot: 67,
           pass: 91,
-          dribble: 82,
+          dribble: 78,
           defend: 72,
-          gk: 28
+          gk: 26
         }
       },
       {
         id: "redbrook-united-09",
-        name: "G. Chanavan",
+        name: "P. Wallsend",
         position: "MID",
         attributes: {
-          pace: 78,
-          shot: 68,
-          pass: 95,
-          dribble: 75,
-          defend: 70,
-          gk: 29
+          pace: 76,
+          shot: 72,
+          pass: 92,
+          dribble: 83,
+          defend: 69,
+          gk: 16
         }
       },
       {
         id: "redbrook-united-10",
-        name: "H. Lakhasan",
+        name: "P. Aldwick",
+        position: "MID",
+        attributes: {
+          pace: 70,
+          shot: 78,
+          pass: 82,
+          dribble: 83,
+          defend: 74,
+          gk: 18
+        }
+      },
+      {
+        id: "redbrook-united-11",
+        name: "S. Brentwood",
         position: "MID",
         attributes: {
           pace: 66,
@@ -360,85 +373,72 @@ export const CLUBS: Club[] = [
           pass: 80,
           dribble: 77,
           defend: 69,
-          gk: 23
-        }
-      },
-      {
-        id: "redbrook-united-11",
-        name: "S. Raoan",
-        position: "MID",
-        attributes: {
-          pace: 62,
-          shot: 63,
-          pass: 87,
-          dribble: 82,
-          defend: 63,
-          gk: 23
+          gk: 19
         }
       },
       {
         id: "redbrook-united-12",
-        name: "M. Vergar",
+        name: "P. Marsden",
         position: "MID",
         attributes: {
-          pace: 67,
-          shot: 68,
-          pass: 88,
-          dribble: 76,
-          defend: 57,
-          gk: 27
+          pace: 70,
+          shot: 60,
+          pass: 80,
+          dribble: 80,
+          defend: 69,
+          gk: 23
         }
       },
       {
         id: "redbrook-united-13",
-        name: "N. Tagesh",
+        name: "J. Stockwell",
         position: "FWD",
         attributes: {
-          pace: 71,
+          pace: 75,
           shot: 90,
-          pass: 63,
-          dribble: 77,
-          defend: 47,
+          pass: 67,
+          dribble: 82,
+          defend: 53,
           gk: 10
         }
       },
       {
         id: "redbrook-united-14",
-        name: "D. Ragavan",
+        name: "V. Penbrook",
         position: "FWD",
         attributes: {
-          pace: 87,
-          shot: 90,
-          pass: 74,
-          dribble: 84,
-          defend: 57,
-          gk: 24
+          pace: 82,
+          shot: 88,
+          pass: 63,
+          dribble: 75,
+          defend: 52,
+          gk: 10
         }
       },
       {
         id: "redbrook-united-15",
-        name: "G. Senkar",
+        name: "G. Gatwick",
         position: "FWD",
         attributes: {
           pace: 81,
-          shot: 91,
-          pass: 63,
-          dribble: 84,
-          defend: 60,
-          gk: 28
+          shot: 87,
+          pass: 71,
+          dribble: 78,
+          defend: 59,
+          gk: 24
         }
       },
       {
         id: "redbrook-united-16",
-        name: "T. Naraasan",
+        name: "N. Whitmore",
         position: "FWD",
         attributes: {
-          pace: 72,
-          shot: 86,
-          pass: 74,
-          dribble: 83,
-          defend: 58,
-          gk: 28
+          pace: 86,
+          shot: 92,
+          pass: 72,
+          dribble: 75,
+          defend: 52,
+          gk: 23
         }
       }
     ]
@@ -453,124 +453,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "riverside-reds-01",
-        name: "L. Kapan",
+        name: "Y. Jotacero",
         position: "GK",
         attributes: {
-          pace: 52,
-          shot: 47,
-          pass: 64,
-          dribble: 60,
-          defend: 49,
-          gk: 91
+          pace: 49,
+          shot: 50,
+          pass: 59,
+          dribble: 66,
+          defend: 48,
+          gk: 94
         }
       },
       {
         id: "riverside-reds-02",
-        name: "N. Senesh",
+        name: "D. Tévezco",
         position: "GK",
         attributes: {
-          pace: 54,
+          pace: 53,
           shot: 49,
-          pass: 57,
-          dribble: 71,
-          defend: 43,
-          gk: 97
+          pass: 64,
+          dribble: 63,
+          defend: 47,
+          gk: 99
         }
       },
       {
         id: "riverside-reds-03",
-        name: "S. Ganguly",
-        position: "DEF",
-        attributes: {
-          pace: 71,
-          shot: 48,
-          pass: 66,
-          dribble: 62,
-          defend: 95,
-          gk: 17
-        }
-      },
-      {
-        id: "riverside-reds-04",
-        name: "V. Bhasesh",
+        name: "J. Grealsh",
         position: "DEF",
         attributes: {
           pace: 63,
           shot: 50,
-          pass: 65,
-          dribble: 68,
-          defend: 95,
-          gk: 18
+          pass: 63,
+          dribble: 63,
+          defend: 85,
+          gk: 21
+        }
+      },
+      {
+        id: "riverside-reds-04",
+        name: "Y. Larochez",
+        position: "DEF",
+        attributes: {
+          pace: 68,
+          shot: 54,
+          pass: 61,
+          dribble: 55,
+          defend: 78,
+          gk: 24
         }
       },
       {
         id: "riverside-reds-05",
-        name: "N. Kulesh",
+        name: "S. Rakitasco",
         position: "DEF",
         attributes: {
-          pace: 79,
-          shot: 43,
-          pass: 54,
-          dribble: 58,
-          defend: 93,
-          gk: 30
+          pace: 74,
+          shot: 48,
+          pass: 57,
+          dribble: 63,
+          defend: 94,
+          gk: 17
         }
       },
       {
         id: "riverside-reds-06",
-        name: "N. Revekh",
+        name: "B. Guimarey",
         position: "DEF",
         attributes: {
-          pace: 64,
-          shot: 50,
-          pass: 59,
-          dribble: 66,
-          defend: 90,
-          gk: 26
+          pace: 78,
+          shot: 55,
+          pass: 61,
+          dribble: 71,
+          defend: 92,
+          gk: 17
         }
       },
       {
         id: "riverside-reds-07",
-        name: "D. Pillekh",
+        name: "M. Quintaños",
         position: "DEF",
         attributes: {
-          pace: 80,
-          shot: 43,
-          pass: 64,
-          dribble: 70,
-          defend: 87,
-          gk: 20
+          pace: 74,
+          shot: 53,
+          pass: 63,
+          dribble: 66,
+          defend: 94,
+          gk: 28
         }
       },
       {
         id: "riverside-reds-08",
-        name: "R. Dravidi",
+        name: "T. Trippyer",
         position: "MID",
         attributes: {
-          pace: 69,
-          shot: 74,
-          pass: 90,
+          pace: 80,
+          shot: 63,
+          pass: 89,
           dribble: 86,
-          defend: 59,
-          gk: 31
+          defend: 67,
+          gk: 23
         }
       },
       {
         id: "riverside-reds-09",
-        name: "B. Chanwar",
+        name: "J. Gremiozo",
         position: "MID",
         attributes: {
-          pace: 73,
-          shot: 61,
-          pass: 91,
+          pace: 75,
+          shot: 76,
+          pass: 79,
           dribble: 88,
-          defend: 64,
-          gk: 15
+          defend: 67,
+          gk: 13
         }
       },
       {
         id: "riverside-reds-10",
-        name: "H. Lakhorey",
+        name: "E. Bernardos",
+        position: "MID",
+        attributes: {
+          pace: 63,
+          shot: 74,
+          pass: 95,
+          dribble: 77,
+          defend: 65,
+          gk: 18
+        }
+      },
+      {
+        id: "riverside-reds-11",
+        name: "T. Marcosco",
         position: "MID",
         attributes: {
           pace: 80,
@@ -578,85 +591,72 @@ export const CLUBS: Club[] = [
           pass: 79,
           dribble: 75,
           defend: 75,
-          gk: 24
-        }
-      },
-      {
-        id: "riverside-reds-11",
-        name: "T. Verkar",
-        position: "MID",
-        attributes: {
-          pace: 67,
-          shot: 62,
-          pass: 83,
-          dribble: 75,
-          defend: 68,
-          gk: 26
+          gk: 29
         }
       },
       {
         id: "riverside-reds-12",
-        name: "D. Naraan",
+        name: "M. Acuñero",
         position: "MID",
         attributes: {
-          pace: 69,
-          shot: 67,
-          pass: 82,
-          dribble: 77,
-          defend: 66,
-          gk: 22
+          pace: 75,
+          shot: 65,
+          pass: 79,
+          dribble: 76,
+          defend: 62,
+          gk: 25
         }
       },
       {
         id: "riverside-reds-13",
-        name: "D. Verande",
+        name: "O. Osornozo",
         position: "FWD",
         attributes: {
-          pace: 71,
-          shot: 96,
-          pass: 64,
-          dribble: 86,
-          defend: 58,
-          gk: 32
+          pace: 77,
+          shot: 85,
+          pass: 69,
+          dribble: 81,
+          defend: 47,
+          gk: 18
         }
       },
       {
         id: "riverside-reds-14",
-        name: "H. Yadadan",
+        name: "T. Dybalazo",
         position: "FWD",
         attributes: {
-          pace: 78,
-          shot: 88,
-          pass: 70,
-          dribble: 89,
-          defend: 56,
-          gk: 14
+          pace: 80,
+          shot: 83,
+          pass: 79,
+          dribble: 75,
+          defend: 58,
+          gk: 19
         }
       },
       {
         id: "riverside-reds-15",
-        name: "N. Chopasan",
+        name: "W. Naldoze",
         position: "FWD",
         attributes: {
-          pace: 85,
-          shot: 84,
-          pass: 70,
-          dribble: 77,
-          defend: 44,
-          gk: 24
+          pace: 84,
+          shot: 90,
+          pass: 74,
+          dribble: 84,
+          defend: 50,
+          gk: 18
         }
       },
       {
         id: "riverside-reds-16",
-        name: "S. Raoorey",
+        name: "U. Ferreira",
         position: "FWD",
         attributes: {
-          pace: 86,
-          shot: 91,
-          pass: 78,
-          dribble: 88,
-          defend: 43,
-          gk: 23
+          pace: 73,
+          shot: 89,
+          pass: 76,
+          dribble: 87,
+          defend: 57,
+          gk: 18
         }
       }
     ]
@@ -671,124 +671,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "stamford-lions-01",
-        name: "M. Pillande",
+        name: "J. Juarezco",
         position: "GK",
         attributes: {
           pace: 43,
-          shot: 48,
-          pass: 62,
-          dribble: 66,
-          defend: 47,
-          gk: 90
+          shot: 41,
+          pass: 60,
+          dribble: 64,
+          defend: 54,
+          gk: 92
         }
       },
       {
         id: "stamford-lions-02",
-        name: "V. Revkar",
+        name: "F. Jorreto",
         position: "GK",
         attributes: {
-          pace: 55,
-          shot: 44,
-          pass: 59,
-          dribble: 67,
-          defend: 54,
-          gk: 95
+          pace: 58,
+          shot: 39,
+          pass: 65,
+          dribble: 58,
+          defend: 49,
+          gk: 99
         }
       },
       {
         id: "stamford-lions-03",
-        name: "K. Rahulan",
+        name: "P. Fodden",
         position: "DEF",
         attributes: {
           pace: 74,
-          shot: 46,
-          pass: 59,
-          dribble: 63,
-          defend: 81,
-          gk: 18
+          shot: 48,
+          pass: 62,
+          dribble: 66,
+          defend: 83,
+          gk: 21
         }
       },
       {
         id: "stamford-lions-04",
-        name: "P. Pillorey",
+        name: "H. Llorentez",
         position: "DEF",
         attributes: {
-          pace: 75,
-          shot: 43,
-          pass: 58,
-          dribble: 64,
-          defend: 78,
-          gk: 20
+          pace: 69,
+          shot: 55,
+          pass: 64,
+          dribble: 55,
+          defend: 90,
+          gk: 16
         }
       },
       {
         id: "stamford-lions-05",
-        name: "J. Naraan",
+        name: "P. Estebaño",
         position: "DEF",
         attributes: {
-          pace: 68,
-          shot: 46,
-          pass: 64,
+          pace: 73,
+          shot: 54,
+          pass: 57,
           dribble: 70,
-          defend: 89,
-          gk: 25
+          defend: 88,
+          gk: 17
         }
       },
       {
         id: "stamford-lions-06",
-        name: "S. Singaja",
+        name: "T. Montielco",
         position: "DEF",
         attributes: {
-          pace: 71,
-          shot: 49,
-          pass: 52,
+          pace: 74,
+          shot: 50,
+          pass: 54,
           dribble: 61,
-          defend: 84,
-          gk: 30
+          defend: 92,
+          gk: 24
         }
       },
       {
         id: "stamford-lions-07",
-        name: "N. Mehron",
+        name: "O. Camachero",
         position: "DEF",
         attributes: {
-          pace: 76,
-          shot: 53,
-          pass: 65,
-          dribble: 65,
-          defend: 85,
-          gk: 18
+          pace: 69,
+          shot: 47,
+          pass: 67,
+          dribble: 60,
+          defend: 81,
+          gk: 26
         }
       },
       {
         id: "stamford-lions-08",
-        name: "H. Pandey",
+        name: "O. Watkinds",
         position: "MID",
         attributes: {
-          pace: 67,
-          shot: 76,
-          pass: 84,
-          dribble: 70,
-          defend: 68,
-          gk: 9
+          pace: 76,
+          shot: 73,
+          pass: 90,
+          dribble: 81,
+          defend: 65,
+          gk: 8
         }
       },
       {
         id: "stamford-lions-09",
-        name: "R. Yadan",
+        name: "J. Kostedaz",
         position: "MID",
         attributes: {
-          pace: 62,
-          shot: 59,
-          pass: 93,
-          dribble: 78,
-          defend: 61,
-          gk: 22
+          pace: 69,
+          shot: 60,
+          pass: 88,
+          dribble: 72,
+          defend: 58,
+          gk: 19
         }
       },
       {
         id: "stamford-lions-10",
-        name: "B. Naywal",
+        name: "W. Delgada",
+        position: "MID",
+        attributes: {
+          pace: 61,
+          shot: 76,
+          pass: 85,
+          dribble: 74,
+          defend: 63,
+          gk: 27
+        }
+      },
+      {
+        id: "stamford-lions-11",
+        name: "B. Galindez",
         position: "MID",
         attributes: {
           pace: 72,
@@ -796,85 +809,72 @@ export const CLUBS: Club[] = [
           pass: 89,
           dribble: 82,
           defend: 58,
-          gk: 17
-        }
-      },
-      {
-        id: "stamford-lions-11",
-        name: "V. Deshpkar",
-        position: "MID",
-        attributes: {
-          pace: 61,
-          shot: 61,
-          pass: 85,
-          dribble: 81,
-          defend: 62,
-          gk: 22
+          gk: 13
         }
       },
       {
         id: "stamford-lions-12",
-        name: "A. Raoande",
+        name: "C. Bordalas",
         position: "MID",
         attributes: {
-          pace: 63,
-          shot: 65,
-          pass: 90,
-          dribble: 72,
-          defend: 72,
-          gk: 24
+          pace: 78,
+          shot: 59,
+          pass: 78,
+          dribble: 78,
+          defend: 68,
+          gk: 15
         }
       },
       {
         id: "stamford-lions-13",
-        name: "M. Senekh",
+        name: "A. Zapataño",
         position: "FWD",
         attributes: {
-          pace: 86,
-          shot: 92,
-          pass: 67,
-          dribble: 88,
-          defend: 49,
-          gk: 32
+          pace: 71,
+          shot: 88,
+          pass: 63,
+          dribble: 79,
+          defend: 55,
+          gk: 24
         }
       },
       {
         id: "stamford-lions-14",
-        name: "R. Chankar",
+        name: "S. Quirogaz",
         position: "FWD",
         attributes: {
-          pace: 84,
-          shot: 87,
+          pace: 79,
+          shot: 94,
           pass: 78,
-          dribble: 80,
-          defend: 45,
-          gk: 21
+          dribble: 90,
+          defend: 54,
+          gk: 25
         }
       },
       {
         id: "stamford-lions-15",
-        name: "H. Sriorey",
+        name: "L. Hermosoz",
         position: "FWD",
         attributes: {
-          pace: 69,
-          shot: 88,
-          pass: 68,
-          dribble: 83,
-          defend: 45,
-          gk: 21
+          pace: 71,
+          shot: 80,
+          pass: 61,
+          dribble: 82,
+          defend: 56,
+          gk: 28
         }
       },
       {
         id: "stamford-lions-16",
-        name: "J. Bhasasan",
+        name: "J. Maravillo",
         position: "FWD",
         attributes: {
           pace: 79,
-          shot: 96,
-          pass: 70,
-          dribble: 76,
-          defend: 49,
-          gk: 26
+          shot: 93,
+          pass: 73,
+          dribble: 87,
+          defend: 43,
+          gk: 16
         }
       }
     ]
@@ -889,124 +889,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "highbury-gunners-01",
-        name: "A. Nayavan",
+        name: "A. Kante",
         position: "GK",
         attributes: {
-          pace: 43,
-          shot: 55,
-          pass: 58,
-          dribble: 63,
-          defend: 48,
-          gk: 94
+          pace: 50,
+          shot: 41,
+          pass: 67,
+          dribble: 60,
+          defend: 51,
+          gk: 93
         }
       },
       {
         id: "highbury-gunners-02",
-        name: "G. Jhaavan",
+        name: "K. Benzemas",
         position: "GK",
         attributes: {
-          pace: 55,
-          shot: 56,
-          pass: 55,
-          dribble: 56,
-          defend: 52,
-          gk: 87
+          pace: 44,
+          shot: 48,
+          pass: 65,
+          dribble: 70,
+          defend: 45,
+          gk: 89
         }
       },
       {
         id: "highbury-gunners-03",
-        name: "J. Bhumra",
+        name: "V. Vinisius",
         position: "DEF",
         attributes: {
-          pace: 65,
-          shot: 42,
-          pass: 65,
-          dribble: 59,
-          defend: 83,
-          gk: 24
+          pace: 72,
+          shot: 40,
+          pass: 67,
+          dribble: 57,
+          defend: 79,
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-04",
-        name: "B. Mehron",
+        name: "J. Saunier",
         position: "DEF",
         attributes: {
-          pace: 74,
-          shot: 40,
-          pass: 65,
-          dribble: 59,
-          defend: 92,
-          gk: 29
+          pace: 71,
+          shot: 44,
+          pass: 59,
+          dribble: 63,
+          defend: 89,
+          gk: 20
         }
       },
       {
         id: "highbury-gunners-05",
-        name: "A. Yadon",
+        name: "H. Hernandez",
         position: "DEF",
         attributes: {
-          pace: 63,
-          shot: 51,
-          pass: 56,
-          dribble: 57,
-          defend: 83,
-          gk: 29
+          pace: 79,
+          shot: 40,
+          pass: 61,
+          dribble: 60,
+          defend: 92,
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-06",
-        name: "M. Triporey",
+        name: "G. Henrique",
         position: "DEF",
         attributes: {
-          pace: 65,
-          shot: 40,
-          pass: 68,
-          dribble: 61,
-          defend: 94,
-          gk: 28
+          pace: 68,
+          shot: 54,
+          pass: 58,
+          dribble: 62,
+          defend: 90,
+          gk: 20
         }
       },
       {
         id: "highbury-gunners-07",
-        name: "M. Jhaon",
+        name: "A. Pogbard",
         position: "DEF",
         attributes: {
-          pace: 70,
-          shot: 56,
-          pass: 59,
-          dribble: 60,
-          defend: 92,
-          gk: 11
+          pace: 69,
+          shot: 57,
+          pass: 64,
+          dribble: 59,
+          defend: 79,
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-08",
-        name: "A. Kumbley",
+        name: "J. Bellengham",
         position: "MID",
         attributes: {
-          pace: 66,
-          shot: 65,
-          pass: 77,
-          dribble: 81,
-          defend: 73,
-          gk: 17
+          pace: 70,
+          shot: 76,
+          pass: 84,
+          dribble: 76,
+          defend: 72,
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-09",
-        name: "S. Sathande",
+        name: "F. Lemaire",
         position: "MID",
         attributes: {
-          pace: 63,
-          shot: 75,
+          pace: 62,
+          shot: 71,
           pass: 93,
-          dribble: 83,
-          defend: 69,
-          gk: 10
+          dribble: 73,
+          defend: 60,
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-10",
-        name: "S. Tripekh",
+        name: "D. Chedard",
+        position: "MID",
+        attributes: {
+          pace: 77,
+          shot: 76,
+          pass: 90,
+          dribble: 82,
+          defend: 59,
+          gk: 17
+        }
+      },
+      {
+        id: "highbury-gunners-11",
+        name: "T. Matuidy",
         position: "MID",
         attributes: {
           pace: 71,
@@ -1014,85 +1027,72 @@ export const CLUBS: Club[] = [
           pass: 93,
           dribble: 76,
           defend: 58,
-          gk: 17
-        }
-      },
-      {
-        id: "highbury-gunners-11",
-        name: "G. Bhaswal",
-        position: "MID",
-        attributes: {
-          pace: 77,
-          shot: 71,
-          pass: 84,
-          dribble: 70,
-          defend: 64,
-          gk: 26
+          gk: 19
         }
       },
       {
         id: "highbury-gunners-12",
-        name: "R. Malekh",
+        name: "S. Deschamp",
         position: "MID",
         attributes: {
-          pace: 66,
-          shot: 63,
-          pass: 93,
-          dribble: 84,
-          defend: 66,
-          gk: 23
+          pace: 72,
+          shot: 75,
+          pass: 88,
+          dribble: 77,
+          defend: 57,
+          gk: 24
         }
       },
       {
         id: "highbury-gunners-13",
-        name: "N. Kulekh",
+        name: "C. Diomayd",
         position: "FWD",
         attributes: {
-          pace: 85,
-          shot: 88,
-          pass: 72,
-          dribble: 85,
-          defend: 44,
-          gk: 28
+          pace: 83,
+          shot: 92,
+          pass: 66,
+          dribble: 77,
+          defend: 58,
+          gk: 25
         }
       },
       {
         id: "highbury-gunners-14",
-        name: "L. Malavan",
+        name: "N. Ollivier",
         position: "FWD",
         attributes: {
-          pace: 76,
-          shot: 85,
-          pass: 66,
-          dribble: 88,
-          defend: 43,
-          gk: 14
+          pace: 73,
+          shot: 94,
+          pass: 71,
+          dribble: 89,
+          defend: 50,
+          gk: 24
         }
       },
       {
         id: "highbury-gunners-15",
-        name: "L. Kulan",
+        name: "D. Lloris",
         position: "FWD",
         attributes: {
-          pace: 86,
-          shot: 88,
-          pass: 74,
-          dribble: 79,
-          defend: 45,
-          gk: 31
+          pace: 85,
+          shot: 94,
+          pass: 70,
+          dribble: 87,
+          defend: 48,
+          gk: 14
         }
       },
       {
         id: "highbury-gunners-16",
-        name: "R. Pillaja",
+        name: "V. Evrance",
         position: "FWD",
         attributes: {
-          pace: 87,
-          shot: 87,
-          pass: 75,
-          dribble: 77,
-          defend: 48,
-          gk: 21
+          pace: 70,
+          shot: 96,
+          pass: 65,
+          dribble: 90,
+          defend: 55,
+          gk: 24
         }
       }
     ]
@@ -1107,124 +1107,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "lilywhite-athletic-01",
-        name: "T. Senesh",
+        name: "Z. Vogelsang",
         position: "GK",
         attributes: {
-          pace: 40,
-          shot: 44,
-          pass: 52,
-          dribble: 55,
-          defend: 53,
-          gk: 90
+          pace: 54,
+          shot: 38,
+          pass: 56,
+          dribble: 54,
+          defend: 43,
+          gk: 98
         }
       },
       {
         id: "lilywhite-athletic-02",
-        name: "T. Bansalesh",
+        name: "H. Lewandburg",
         position: "GK",
         attributes: {
-          pace: 42,
-          shot: 49,
-          pass: 54,
+          pace: 40,
+          shot: 53,
+          pass: 52,
           dribble: 63,
-          defend: 48,
-          gk: 92
+          defend: 44,
+          gk: 96
         }
       },
       {
         id: "lilywhite-athletic-03",
-        name: "Y. Singhi",
-        position: "DEF",
-        attributes: {
-          pace: 62,
-          shot: 52,
-          pass: 54,
-          dribble: 62,
-          defend: 87,
-          gk: 24
-        }
-      },
-      {
-        id: "lilywhite-athletic-04",
-        name: "V. Ashesh",
-        position: "DEF",
-        attributes: {
-          pace: 71,
-          shot: 44,
-          pass: 66,
-          dribble: 62,
-          defend: 87,
-          gk: 22
-        }
-      },
-      {
-        id: "lilywhite-athletic-05",
-        name: "R. Yadwal",
-        position: "DEF",
-        attributes: {
-          pace: 76,
-          shot: 48,
-          pass: 53,
-          dribble: 59,
-          defend: 75,
-          gk: 20
-        }
-      },
-      {
-        id: "lilywhite-athletic-06",
-        name: "S. Raowar",
+        name: "F. Valvurde",
         position: "DEF",
         attributes: {
           pace: 68,
           shot: 45,
-          pass: 65,
-          dribble: 58,
-          defend: 80,
-          gk: 14
+          pass: 51,
+          dribble: 54,
+          defend: 89,
+          gk: 20
         }
       },
       {
-        id: "lilywhite-athletic-07",
-        name: "V. Senesh",
+        id: "lilywhite-athletic-04",
+        name: "T. Jungling",
         position: "DEF",
         attributes: {
-          pace: 67,
-          shot: 41,
-          pass: 52,
-          dribble: 63,
-          defend: 87,
-          gk: 24
-        }
-      },
-      {
-        id: "lilywhite-athletic-08",
-        name: "R. Jadhav",
-        position: "MID",
-        attributes: {
-          pace: 62,
-          shot: 63,
-          pass: 79,
-          dribble: 66,
-          defend: 61,
-          gk: 15
-        }
-      },
-      {
-        id: "lilywhite-athletic-09",
-        name: "N. Ashwar",
-        position: "MID",
-        attributes: {
-          pace: 62,
-          shot: 66,
-          pass: 87,
-          dribble: 70,
-          defend: 61,
+          pace: 64,
+          shot: 37,
+          pass: 65,
+          dribble: 61,
+          defend: 86,
           gk: 28
         }
       },
       {
+        id: "lilywhite-athletic-05",
+        name: "R. Cronberg",
+        position: "DEF",
+        attributes: {
+          pace: 68,
+          shot: 38,
+          pass: 58,
+          dribble: 52,
+          defend: 76,
+          gk: 28
+        }
+      },
+      {
+        id: "lilywhite-athletic-06",
+        name: "G. Rummling",
+        position: "DEF",
+        attributes: {
+          pace: 60,
+          shot: 49,
+          pass: 52,
+          dribble: 62,
+          defend: 78,
+          gk: 23
+        }
+      },
+      {
+        id: "lilywhite-athletic-07",
+        name: "L. Klinsmann",
+        position: "DEF",
+        attributes: {
+          pace: 66,
+          shot: 43,
+          pass: 49,
+          dribble: 56,
+          defend: 84,
+          gk: 19
+        }
+      },
+      {
+        id: "lilywhite-athletic-08",
+        name: "L. Modrich",
+        position: "MID",
+        attributes: {
+          pace: 67,
+          shot: 61,
+          pass: 77,
+          dribble: 79,
+          defend: 67,
+          gk: 24
+        }
+      },
+      {
+        id: "lilywhite-athletic-09",
+        name: "E. Lausberg",
+        position: "MID",
+        attributes: {
+          pace: 64,
+          shot: 56,
+          pass: 81,
+          dribble: 70,
+          defend: 61,
+          gk: 12
+        }
+      },
+      {
         id: "lilywhite-athletic-10",
-        name: "B. Yadavan",
+        name: "W. Gretzmann",
+        position: "MID",
+        attributes: {
+          pace: 68,
+          shot: 70,
+          pass: 77,
+          dribble: 74,
+          defend: 67,
+          gk: 22
+        }
+      },
+      {
+        id: "lilywhite-athletic-11",
+        name: "N. Steinberg",
         position: "MID",
         attributes: {
           pace: 66,
@@ -1236,81 +1249,68 @@ export const CLUBS: Club[] = [
         }
       },
       {
-        id: "lilywhite-athletic-11",
-        name: "B. Revgar",
-        position: "MID",
-        attributes: {
-          pace: 59,
-          shot: 67,
-          pass: 82,
-          dribble: 82,
-          defend: 61,
-          gk: 16
-        }
-      },
-      {
         id: "lilywhite-athletic-12",
-        name: "V. Kulekh",
+        name: "Y. Iglinger",
         position: "MID",
         attributes: {
-          pace: 66,
-          shot: 66,
+          pace: 61,
+          shot: 57,
           pass: 84,
-          dribble: 78,
-          defend: 68,
-          gk: 23
+          dribble: 75,
+          defend: 69,
+          gk: 19
         }
       },
       {
         id: "lilywhite-athletic-13",
-        name: "D. Patan",
+        name: "G. Freudling",
         position: "FWD",
         attributes: {
-          pace: 69,
-          shot: 85,
-          pass: 59,
-          dribble: 74,
-          defend: 45,
-          gk: 21
+          pace: 81,
+          shot: 84,
+          pass: 66,
+          dribble: 80,
+          defend: 49,
+          gk: 28
         }
       },
       {
         id: "lilywhite-athletic-14",
-        name: "J. Deshpekh",
+        name: "R. Ackermann",
         position: "FWD",
         attributes: {
-          pace: 68,
-          shot: 86,
-          pass: 73,
-          dribble: 81,
-          defend: 56,
-          gk: 15
+          pace: 73,
+          shot: 94,
+          pass: 75,
+          dribble: 73,
+          defend: 47,
+          gk: 10
         }
       },
       {
         id: "lilywhite-athletic-15",
-        name: "L. Nayon",
+        name: "J. Metzmann",
         position: "FWD",
         attributes: {
-          pace: 83,
-          shot: 90,
-          pass: 69,
-          dribble: 88,
-          defend: 50,
-          gk: 24
+          pace: 82,
+          shot: 79,
+          pass: 73,
+          dribble: 75,
+          defend: 40,
+          gk: 26
         }
       },
       {
         id: "lilywhite-athletic-16",
-        name: "N. Kulande",
+        name: "O. Mulling",
         position: "FWD",
         attributes: {
-          pace: 75,
-          shot: 88,
-          pass: 65,
-          dribble: 83,
-          defend: 42,
-          gk: 14
+          pace: 72,
+          shot: 93,
+          pass: 74,
+          dribble: 77,
+          defend: 54,
+          gk: 29
         }
       }
     ]
@@ -1325,124 +1325,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "mersey-toffees-01",
-        name: "K. Malesh",
+        name: "E. Ndombele",
         position: "GK",
         attributes: {
-          pace: 39,
+          pace: 51,
           shot: 37,
-          pass: 45,
-          dribble: 64,
-          defend: 43,
-          gk: 91
+          pass: 49,
+          dribble: 47,
+          defend: 52,
+          gk: 88
         }
       },
       {
         id: "mersey-toffees-02",
-        name: "M. Yadgar",
+        name: "P. Nkachby",
         position: "GK",
         attributes: {
-          pace: 47,
-          shot: 49,
-          pass: 63,
-          dribble: 49,
-          defend: 48,
-          gk: 80
+          pace: 45,
+          shot: 37,
+          pass: 57,
+          dribble: 63,
+          defend: 53,
+          gk: 82
         }
       },
       {
         id: "mersey-toffees-03",
-        name: "V. Sehvag",
+        name: "R. Gnabri",
         position: "DEF",
         attributes: {
-          pace: 67,
-          shot: 43,
-          pass: 46,
-          dribble: 53,
-          defend: 74,
-          gk: 30
+          pace: 68,
+          shot: 33,
+          pass: 58,
+          dribble: 59,
+          defend: 80,
+          gk: 13
         }
       },
       {
         id: "mersey-toffees-04",
-        name: "B. Mehran",
+        name: "F. Sissoko",
         position: "DEF",
         attributes: {
-          pace: 71,
-          shot: 46,
+          pace: 65,
+          shot: 38,
           pass: 52,
-          dribble: 50,
-          defend: 81,
-          gk: 30
+          dribble: 62,
+          defend: 86,
+          gk: 21
         }
       },
       {
         id: "mersey-toffees-05",
-        name: "L. Srion",
+        name: "D. Aboubakar",
         position: "DEF",
         attributes: {
-          pace: 68,
-          shot: 41,
-          pass: 54,
-          dribble: 54,
-          defend: 75,
+          pace: 70,
+          shot: 49,
+          pass: 56,
+          dribble: 55,
+          defend: 81,
           gk: 21
         }
       },
       {
         id: "mersey-toffees-06",
-        name: "S. Singekh",
+        name: "M. Partey",
         position: "DEF",
         attributes: {
-          pace: 61,
-          shot: 46,
-          pass: 62,
-          dribble: 50,
-          defend: 78,
-          gk: 28
-        }
-      },
-      {
-        id: "mersey-toffees-07",
-        name: "D. Deshpekh",
-        position: "DEF",
-        attributes: {
-          pace: 63,
-          shot: 36,
-          pass: 53,
-          dribble: 62,
-          defend: 72,
-          gk: 14
-        }
-      },
-      {
-        id: "mersey-toffees-08",
-        name: "Z. Khanna",
-        position: "MID",
-        attributes: {
-          pace: 62,
-          shot: 56,
-          pass: 77,
-          dribble: 78,
-          defend: 62,
+          pace: 60,
+          shot: 42,
+          pass: 48,
+          dribble: 55,
+          defend: 84,
           gk: 22
         }
       },
       {
-        id: "mersey-toffees-09",
-        name: "K. Patekar",
+        id: "mersey-toffees-07",
+        name: "S. Tielemans",
+        position: "DEF",
+        attributes: {
+          pace: 58,
+          shot: 41,
+          pass: 58,
+          dribble: 58,
+          defend: 72,
+          gk: 27
+        }
+      },
+      {
+        id: "mersey-toffees-08",
+        name: "L. Goretzko",
         position: "MID",
         attributes: {
-          pace: 59,
-          shot: 59,
-          pass: 75,
-          dribble: 68,
-          defend: 64,
-          gk: 28
+          pace: 63,
+          shot: 56,
+          pass: 78,
+          dribble: 78,
+          defend: 52,
+          gk: 15
+        }
+      },
+      {
+        id: "mersey-toffees-09",
+        name: "K. Foraday",
+        position: "MID",
+        attributes: {
+          pace: 62,
+          shot: 68,
+          pass: 82,
+          dribble: 74,
+          defend: 54,
+          gk: 14
         }
       },
       {
         id: "mersey-toffees-10",
-        name: "P. Revekh",
+        name: "M. Iwobi",
+        position: "MID",
+        attributes: {
+          pace: 61,
+          shot: 58,
+          pass: 75,
+          dribble: 77,
+          defend: 67,
+          gk: 28
+        }
+      },
+      {
+        id: "mersey-toffees-11",
+        name: "U. Ekitike",
         position: "MID",
         attributes: {
           pace: 73,
@@ -1450,85 +1463,72 @@ export const CLUBS: Club[] = [
           pass: 70,
           dribble: 66,
           defend: 51,
-          gk: 17
-        }
-      },
-      {
-        id: "mersey-toffees-11",
-        name: "R. Patan",
-        position: "MID",
-        attributes: {
-          pace: 61,
-          shot: 64,
-          pass: 86,
-          dribble: 77,
-          defend: 51,
-          gk: 16
+          gk: 10
         }
       },
       {
         id: "mersey-toffees-12",
-        name: "K. Bhasgar",
+        name: "J. Zaidu",
         position: "MID",
         attributes: {
-          pace: 71,
-          shot: 71,
-          pass: 85,
-          dribble: 75,
-          defend: 59,
-          gk: 12
+          pace: 73,
+          shot: 59,
+          pass: 81,
+          dribble: 79,
+          defend: 64,
+          gk: 7
         }
       },
       {
         id: "mersey-toffees-13",
-        name: "A. Chanande",
+        name: "E. Dembaby",
         position: "FWD",
         attributes: {
           pace: 67,
-          shot: 84,
-          pass: 58,
-          dribble: 80,
-          defend: 46,
-          gk: 28
+          shot: 79,
+          pass: 71,
+          dribble: 85,
+          defend: 50,
+          gk: 22
         }
       },
       {
         id: "mersey-toffees-14",
-        name: "H. Bansalwal",
+        name: "D. Balogun",
         position: "FWD",
         attributes: {
-          pace: 71,
-          shot: 83,
-          pass: 55,
-          dribble: 73,
-          defend: 39,
-          gk: 18
+          pace: 64,
+          shot: 75,
+          pass: 62,
+          dribble: 71,
+          defend: 46,
+          gk: 21
         }
       },
       {
         id: "mersey-toffees-15",
-        name: "L. Srian",
+        name: "O. Pépéby",
         position: "FWD",
         attributes: {
-          pace: 75,
-          shot: 89,
-          pass: 66,
-          dribble: 84,
-          defend: 40,
-          gk: 16
+          pace: 77,
+          shot: 74,
+          pass: 56,
+          dribble: 71,
+          defend: 43,
+          gk: 12
         }
       },
       {
         id: "mersey-toffees-16",
-        name: "J. Verande",
+        name: "J. Jaurabi",
         position: "FWD",
         attributes: {
-          pace: 73,
-          shot: 81,
-          pass: 61,
-          dribble: 74,
-          defend: 44,
-          gk: 20
+          pace: 72,
+          shot: 89,
+          pass: 66,
+          dribble: 73,
+          defend: 45,
+          gk: 28
         }
       }
     ]
@@ -1543,124 +1543,137 @@ export const CLUBS: Club[] = [
     players: [
       {
         id: "claret-park-01",
-        name: "G. Pillekh",
+        name: "S. Cresswell",
         position: "GK",
         attributes: {
-          pace: 41,
-          shot: 35,
-          pass: 51,
-          dribble: 52,
-          defend: 42,
+          pace: 50,
+          shot: 39,
+          pass: 47,
+          dribble: 53,
+          defend: 40,
           gk: 87
         }
       },
       {
         id: "claret-park-02",
-        name: "J. Ragaja",
+        name: "J. Yeatham",
         position: "GK",
         attributes: {
-          pace: 49,
-          shot: 42,
-          pass: 55,
+          pace: 43,
+          shot: 49,
+          pass: 59,
           dribble: 56,
-          defend: 47,
-          gk: 92
+          defend: 45,
+          gk: 89
         }
       },
       {
         id: "claret-park-03",
-        name: "A. Rahane",
+        name: "T. Myller",
         position: "DEF",
         attributes: {
-          pace: 62,
-          shot: 35,
-          pass: 60,
-          dribble: 51,
-          defend: 82,
-          gk: 24
+          pace: 67,
+          shot: 45,
+          pass: 51,
+          dribble: 54,
+          defend: 72,
+          gk: 18
         }
       },
       {
         id: "claret-park-04",
-        name: "D. Ashwal",
+        name: "P. Whitmore",
         position: "DEF",
         attributes: {
-          pace: 64,
-          shot: 38,
-          pass: 52,
-          dribble: 64,
-          defend: 72,
-          gk: 16
+          pace: 67,
+          shot: 34,
+          pass: 47,
+          dribble: 48,
+          defend: 79,
+          gk: 15
         }
       },
       {
         id: "claret-park-05",
-        name: "P. Raoesh",
-        position: "DEF",
-        attributes: {
-          pace: 60,
-          shot: 42,
-          pass: 46,
-          dribble: 59,
-          defend: 75,
-          gk: 10
-        }
-      },
-      {
-        id: "claret-park-06",
-        name: "P. Bhasaja",
-        position: "DEF",
-        attributes: {
-          pace: 60,
-          shot: 46,
-          pass: 46,
-          dribble: 63,
-          defend: 78,
-          gk: 19
-        }
-      },
-      {
-        id: "claret-park-07",
-        name: "D. Jhaan",
+        name: "Y. Caldwick",
         position: "DEF",
         attributes: {
           pace: 65,
-          shot: 37,
-          pass: 49,
-          dribble: 49,
+          shot: 42,
+          pass: 57,
+          dribble: 64,
           defend: 74,
-          gk: 19
-        }
-      },
-      {
-        id: "claret-park-08",
-        name: "S. Iyerman",
-        position: "MID",
-        attributes: {
-          pace: 72,
-          shot: 62,
-          pass: 83,
-          dribble: 66,
-          defend: 67,
-          gk: 23
-        }
-      },
-      {
-        id: "claret-park-09",
-        name: "N. Raoorey",
-        position: "MID",
-        attributes: {
-          pace: 61,
-          shot: 63,
-          pass: 73,
-          dribble: 70,
-          defend: 66,
           gk: 17
         }
       },
       {
+        id: "claret-park-06",
+        name: "A. Venham",
+        position: "DEF",
+        attributes: {
+          pace: 60,
+          shot: 36,
+          pass: 55,
+          dribble: 60,
+          defend: 86,
+          gk: 17
+        }
+      },
+      {
+        id: "claret-park-07",
+        name: "R. Brentwood",
+        position: "DEF",
+        attributes: {
+          pace: 71,
+          shot: 41,
+          pass: 52,
+          dribble: 59,
+          defend: 74,
+          gk: 27
+        }
+      },
+      {
+        id: "claret-park-08",
+        name: "K. Haberstz",
+        position: "MID",
+        attributes: {
+          pace: 65,
+          shot: 57,
+          pass: 74,
+          dribble: 65,
+          defend: 54,
+          gk: 21
+        }
+      },
+      {
+        id: "claret-park-09",
+        name: "W. Penbrook",
+        position: "MID",
+        attributes: {
+          pace: 68,
+          shot: 56,
+          pass: 87,
+          dribble: 73,
+          defend: 58,
+          gk: 25
+        }
+      },
+      {
         id: "claret-park-10",
-        name: "T. Naraavan",
+        name: "M. Kelham",
+        position: "MID",
+        attributes: {
+          pace: 65,
+          shot: 56,
+          pass: 77,
+          dribble: 79,
+          defend: 56,
+          gk: 22
+        }
+      },
+      {
+        id: "claret-park-11",
+        name: "M. Foxham",
         position: "MID",
         attributes: {
           pace: 70,
@@ -1668,85 +1681,72 @@ export const CLUBS: Club[] = [
           pass: 72,
           dribble: 75,
           defend: 55,
-          gk: 20
-        }
-      },
-      {
-        id: "claret-park-11",
-        name: "B. Chopesh",
-        position: "MID",
-        attributes: {
-          pace: 59,
-          shot: 64,
-          pass: 73,
-          dribble: 77,
-          defend: 58,
-          gk: 16
+          gk: 18
         }
       },
       {
         id: "claret-park-12",
-        name: "N. Tagekar",
+        name: "T. Duxford",
         position: "MID",
         attributes: {
-          pace: 59,
-          shot: 58,
-          pass: 76,
-          dribble: 67,
-          defend: 51,
-          gk: 17
+          pace: 67,
+          shot: 57,
+          pass: 81,
+          dribble: 66,
+          defend: 64,
+          gk: 13
         }
       },
       {
         id: "claret-park-13",
-        name: "T. Bhasorey",
+        name: "L. Zeldham",
         position: "FWD",
         attributes: {
-          pace: 76,
-          shot: 77,
-          pass: 58,
-          dribble: 75,
-          defend: 42,
-          gk: 9
+          pace: 67,
+          shot: 84,
+          pass: 59,
+          dribble: 72,
+          defend: 41,
+          gk: 8
         }
       },
       {
         id: "claret-park-14",
-        name: "A. Bansalan",
+        name: "H. Edgewick",
         position: "FWD",
         attributes: {
-          pace: 81,
-          shot: 75,
-          pass: 72,
-          dribble: 75,
-          defend: 50,
+          pace: 76,
+          shot: 87,
+          pass: 60,
+          dribble: 80,
+          defend: 39,
           gk: 15
         }
       },
       {
         id: "claret-park-15",
-        name: "G. Yadan",
+        name: "J. Dunfield",
         position: "FWD",
         attributes: {
-          pace: 74,
-          shot: 81,
-          pass: 71,
-          dribble: 79,
-          defend: 37,
-          gk: 8
+          pace: 64,
+          shot: 74,
+          pass: 62,
+          dribble: 81,
+          defend: 53,
+          gk: 24
         }
       },
       {
         id: "claret-park-16",
-        name: "K. Deshpkar",
+        name: "K. Salwick",
         position: "FWD",
         attributes: {
-          pace: 68,
-          shot: 87,
-          pass: 63,
+          pace: 65,
+          shot: 86,
+          pass: 65,
           dribble: 74,
-          defend: 48,
-          gk: 17
+          defend: 36,
+          gk: 19
         }
       }
     ]
@@ -1762,13 +1762,10 @@ export function getClub(id: string): Club {
   return club;
 }
 
-/** First player at the given position, falling back to the first player in the squad. */
 export function playerAt(club: Club, position: Club["players"][number]["position"]) {
   return club.players.find((p) => p.position === position) ?? club.players[0]!;
 }
 
-/** Up to `n` players at the given position, in squad order. */
 export function playersAt(club: Club, position: Club["players"][number]["position"], n: number) {
   return club.players.filter((p) => p.position === position).slice(0, n);
 }
-
