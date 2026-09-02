@@ -67,7 +67,7 @@ export function MatchScene() {
   // Clubs, networking role and room are chosen on the menu before this
   // component ever mounts, so a one-time read here (not a subscription) is
   // enough — none of them change mid-match.
-  const { homeClubId, awayClubId, netRole, roomCode, difficulty } = useGameStore.getState();
+  const { homeClubId, awayClubId, netRole, roomCode, difficulty, mentality } = useGameStore.getState();
   const diff = DIFFICULTY_TUNING[difficulty];
 
   // Local 2P reassigns P1 to WASD-only (arrows go to P2); every other mode
@@ -96,8 +96,8 @@ export function MatchScene() {
 
   // Rosters + formation roles, computed once — positions are re-derived by
   // the store on every kickoff, but attributes/roles never change mid-match.
-  const homeXI = useRef(buildOutfield(homeClub, HOME_DEFEND_SIDE)).current;
-  const awayXI = useRef(buildOutfield(awayClub, AWAY_DEFEND_SIDE)).current;
+  const homeXI = useRef(buildOutfield(homeClub, HOME_DEFEND_SIDE, mentality)).current;
+  const awayXI = useRef(buildOutfield(awayClub, AWAY_DEFEND_SIDE, mentality)).current;
 
   const homeParams = useRef(homeXI.map((e) => paramsFromAttributes(e.player.attributes))).current;
   const awayParams = useRef(awayXI.map((e) => paramsFromAttributes(e.player.attributes))).current;
@@ -358,7 +358,7 @@ export function MatchScene() {
             if (i === controlledIndex) {
               return clampToPitch(stepMovement(p, keys, params, dt), PITCH.halfLength, PITCH.halfWidth);
             }
-            const ai = stepOutfield(p, homeXI[i]!.role, refBall, false);
+            const ai = stepOutfield(p, homeXI[i]!.role, refBall, false, mentality);
             return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
           });
           const awayOutfield = store.awayOutfield.map((p, i) => {
@@ -366,7 +366,7 @@ export function MatchScene() {
             if (hasAwayHumanNow && i === awayControlledIndex) {
               return clampToPitch(stepMovement(p, awayKeysNow, params, dt), PITCH.halfLength, PITCH.halfWidth);
             }
-            const ai = stepOutfield(p, awayXI[i]!.role, refBall, false);
+            const ai = stepOutfield(p, awayXI[i]!.role, refBall, false, mentality);
             return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
           });
 
@@ -376,7 +376,46 @@ export function MatchScene() {
         }
       } else if (store.matchStatus === "kickoff") {
         playWhistle(); // kickoff whistle as play resumes
-        useGameStore.setState({ matchStatus: "playing", statusTimer: 0, lastScorer: null });
+        // Hand possession to the team that just conceded (or the home side
+        // at match start / after halftime, when nobody has scored recently),
+        // and pull their controlled player onto the centre spot so they can
+        // actually kick off. Every other player is already in their own
+        // half from the fresh formation shape — so nobody's stranded near
+        // midfield the way they used to be.
+        const kickoffTeam: TeamSide = store.lastScorer === "home" ? "away" : "home";
+        let nextHomeOutfield = store.homeOutfield;
+        let nextAwayOutfield = store.awayOutfield;
+        let possessionGrant: Possession | null = null;
+
+        const centre: Kinematics = {
+          position: { x: 0, y: 0, z: 0 },
+          velocity: { x: 0, y: 0, z: 0 },
+          heading: kickoffTeam === "home" ? 0 : Math.PI, // face the opponent's goal
+        };
+        if (kickoffTeam === "home") {
+          nextHomeOutfield = nextHomeOutfield.map((p, i) => (i === store.controlledIndex ? centre : p));
+          possessionGrant = { team: "home", index: store.controlledIndex };
+        } else if (store.awayControlledIndex !== null) {
+          const idx = store.awayControlledIndex;
+          nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? centre : p));
+          possessionGrant = { team: "away", index: idx };
+        } else {
+          // Fully-AI opponent kickoff: put an AI forward on the centre spot.
+          const fwdIdx = store.awayOutfield.findIndex((_, i) => awayXI[i]?.role.slot.position === "FWD");
+          if (fwdIdx >= 0) {
+            nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === fwdIdx ? centre : p));
+            possessionGrant = { team: "away", index: fwdIdx };
+          }
+        }
+        useGameStore.setState({
+          matchStatus: "playing",
+          statusTimer: 0,
+          lastScorer: null,
+          homeOutfield: nextHomeOutfield,
+          awayOutfield: nextAwayOutfield,
+          possession: possessionGrant,
+          lastTouch: kickoffTeam,
+        });
       } else if (store.matchStatus === "goal") {
         store.resetPositions();
         useGameStore.setState({
@@ -690,7 +729,7 @@ export function MatchScene() {
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const ai = stepOutfield(p, homeXI[i]!.role, store.ball, isChaserNow);
+      const ai = stepOutfield(p, homeXI[i]!.role, store.ball, isChaserNow, mentality);
       const params = scaleParams(homeParams[i] ?? homeParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
@@ -762,7 +801,7 @@ export function MatchScene() {
         return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
       }
 
-      const ai = stepOutfield(p, awayXI[i]!.role, store.ball, isChaserNow);
+      const ai = stepOutfield(p, awayXI[i]!.role, store.ball, isChaserNow, mentality);
       const params = scaleParams(awayParams[i] ?? awayParams[0]!);
       return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
     });
