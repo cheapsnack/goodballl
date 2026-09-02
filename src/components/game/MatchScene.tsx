@@ -14,6 +14,7 @@ import { clampToPitch, paramsFromAttributes, stepMovement } from "../../game/log
 import { applyImpulse, BALL_RADIUS, stepBall, STRIKE_TUNING } from "../../game/logic/ballPhysics";
 import { canStrike, resolveStrike, stepCharge } from "../../game/logic/striking";
 import {
+  CAMERA_TUNING,
   stepBroadcastCamera,
   stepRunCamera,
   type CameraFrame,
@@ -140,6 +141,13 @@ export function MatchScene() {
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
   const broadcastTick = useRef(0);
+  /**
+   * The three.js elapsedTime at the moment we last wrote the current
+   * `store.matchTime` value — used to compute the wall-clock diff each frame
+   * so the match clock advances by real seconds, not summed frame deltas.
+   * Reset every time play resumes (kickoff, restart, etc.).
+   */
+  const playStartRef = useRef(0);
 
   // Only set up a realtime channel for a networked match — for local
   // single-player, `code` is null and the hook is a no-op.
@@ -223,6 +231,20 @@ export function MatchScene() {
     const f = camFrame.current;
     camera.position.set(f.position.x, f.position.y, f.position.z);
     camera.lookAt(f.lookAt.x, f.lookAt.y, f.lookAt.z);
+
+    // Dynamic FOV: zoom in when action is close; ease back out at distance.
+    const t = CAMERA_TUNING[mode];
+    const distToBall = Math.hypot(ballPos.x - playerPos.x, ballPos.z - playerPos.z);
+    const baseFov = t.fov;
+    const targetFov =
+      mode === "broadcast"
+        ? distToBall < CAMERA_TUNING.broadcast.zoomTriggerDist
+          ? CAMERA_TUNING.broadcast.zoomInFov
+          : baseFov
+        : baseFov;
+    (camera as THREE.PerspectiveCamera).fov +=
+      (targetFov - (camera as THREE.PerspectiveCamera).fov) * Math.min(1, dt * 3);
+    (camera as THREE.PerspectiveCamera).updateProjectionMatrix();
   };
 
   /** Pushes simulation bodies onto the three.js meshes. */
@@ -377,7 +399,8 @@ export function MatchScene() {
           useGameStore.setState({ statusTimer: remaining });
         }
       } else if (store.matchStatus === "kickoff") {
-        playWhistle(); // kickoff whistle as play resumes
+        playWhistle();
+        playStartRef.current = state.clock.elapsedTime; // kickoff whistle as play resumes
         // Hand possession to the team that just conceded (or the home side
         // at match start / after halftime, when nobody has scored recently),
         // and pull their controlled player onto the centre spot so they can
@@ -506,7 +529,7 @@ export function MatchScene() {
           statusTimer: 0,
         });
         playWhistle();
-      } else if (store.matchStatus === "halftime") {
+        playStartRef.current = state.clock.elapsedTime;
         store.resetPositions();
         useGameStore.setState({
           period: store.period + 1,
@@ -525,8 +548,10 @@ export function MatchScene() {
       return;
     }
 
-    // --- clock ---
-    const matchTime = store.matchTime + dt * MATCH_TUNING.clockScale;
+    const elapsed = state.clock.elapsedTime;
+    const matchTime = store.matchTime + (elapsed - playStartRef.current);
+    // Reset the baseline immediately so next frame's diff starts fresh.
+    playStartRef.current = elapsed;
 
     // --- home controlled player (movement is dampened while winding up a strike) ---
     const prevCharge = store.charge;
@@ -623,8 +648,6 @@ export function MatchScene() {
 
     // --- strikes: releasing the charge always gives up possession ---
     if (released && canStrike(controlled, ball, possession?.team === "home" && possession?.index === controlledIndex) && (restartLock === null || restartLock === "home")) {
-      // Shots get a light on-target nudge toward goal centre; passing has no
-      // teammate-lock-on target yet, so it's pure facing direction.
       const goalTarget =
         prevCharge.action === "shoot" ? { x: -HOME_DEFEND_SIDE * PITCH.halfLength, z: 0 } : undefined;
       const strike = resolveStrike(controlled, prevCharge, goalTarget);
@@ -640,6 +663,12 @@ export function MatchScene() {
       };
       playKick(prevCharge.power);
       bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
+      // Auto-switch to the nearest teammate after a pass, like FIFA/PES — the
+      // passer is now irrelevant until the ball comes back to them.
+      if (prevCharge.action === "pass") {
+        const next = nearestToBallIndex(store.homeOutfield, ball);
+        if (next !== controlledIndex) useGameStore.setState({ controlledIndex: next });
+      }
     }
 
     if (
@@ -827,17 +856,29 @@ export function MatchScene() {
 
     // Fouls & bookings from a mistimed tackle: attemptTackleImpulse gets
     // first refusal on each side; if it returns null but the tackler is
-    // still crashing into an opposing body, it's a foul → yellow (or a
-    // second yellow → red for that player). New bookings are staged into
-    // this local array so we can flush them into the store in one write.
+    // still crashing into an opposing body, it's a foul → booking + free kick.
+    // Per-tackle rate limit prevents multiple cards from a single challenge.
     let bookings = store.bookings;
-    const stageBooking = (offenderTeam: TeamSide, offenderIndex: number) => {
+    let foulFiredThisFrame = false;
+    const stageFoul = (offenderTeam: TeamSide, offenderIndex: number, foulPos: { x: number; z: number }) => {
+      if (foulFiredThisFrame) return;
+      foulFiredThisFrame = true;
       const roster = offenderTeam === "home" ? homeXI : awayXI;
       const playerName = roster[offenderIndex]?.player.name ?? "Unknown";
       const color = cardForFoul(bookings, { team: offenderTeam, playerIndex: offenderIndex });
-      const minute = Math.floor(store.matchTime / 60) + 1;
+      const minute = Math.floor(matchTime / 60) + 1;
       const booking: Booking = { team: offenderTeam, playerIndex: offenderIndex, playerName, color, minute };
       bookings = [...bookings, booking];
+      // Free kick: the fouled side gets the ball at the foul spot (clamp inside pitch).
+      const clampX = Math.max(-PITCH.halfLength + 3, Math.min(PITCH.halfLength - 3, foulPos.x));
+      const clampZ = Math.max(-PITCH.halfWidth + 3, Math.min(PITCH.halfWidth - 3, foulPos.z));
+      useGameStore.setState({
+        bookings,
+        restart: { type: "throwin", team: offenderTeam === "home" ? "away" : "home", position: { x: clampX, z: clampZ } },
+        matchStatus: "restart",
+        statusTimer: MATCH_TUNING.restartPause,
+        possession: null,
+      });
       playWhistle();
     };
 
@@ -856,21 +897,16 @@ export function MatchScene() {
         tackleState.current.active = 0;
         playKick(0.55);
       } else {
-        // Missed the ball — check if the tackle dash hit an opponent's body.
-        // This is separate from steal (which already fired above if close enough):
-        // a foul fires when you were close enough to an opponent's body but
-        // not close enough to the ball to win it cleanly.
         const victim = detectFoulOnOpponent(controlled.position, store.awayOutfield);
         if (victim !== null) {
-          stageBooking("home", controlledIndex);
           tackleState.current.active = 0;
-          // Also: a foul ends possession for the victim (the challenge is
-          // clumsy but real — the ball is loose now).
+          stageFoul("home", controlledIndex, controlled.position);
           if (possession?.team === "away") possession = null;
         }
       }
     }
     if (
+      !foulFiredThisFrame &&
       awayControlled &&
       awayTackleState.current.active > 0 &&
       (restartLock === null || restartLock === "away")
@@ -891,11 +927,17 @@ export function MatchScene() {
       } else {
         const victim = detectFoulOnOpponent(awayControlled.position, store.homeOutfield);
         if (victim !== null) {
-          stageBooking("away", awayControlledIndex ?? 0);
           awayTackleState.current.active = 0;
+          stageFoul("away", awayControlledIndex ?? 0, awayControlled.position);
           if (possession?.team === "home") possession = null;
         }
       }
+    }
+    // If a foul fired, write `bookings` and the restart state, then bail — everything
+    // else this frame is superseded by the restart sequence.
+    if (foulFiredThisFrame) {
+      maybeBroadcastState();
+      return;
     }
 
     // --- goalkeeper movement (positioning/diving reacts to the ball as of any strike/tackle already resolved this frame) ---
@@ -1163,10 +1205,9 @@ export function MatchScene() {
 }
 
 /**
- * Reads positions and the controlled index from the store reactively (up to
- * the store's update frequency) and delegates rendering to PlayerLabels.
- * Isolated as its own component so re-renders from the store don't cascade
- * into the main MatchScene (which is only re-rendered on React mount).
+ * Reads positions and the controlled index from the store reactively and
+ * renders labels only for: the controlled player + the 3 players (on either
+ * team) nearest to the ball. This stops the pile-up when players bunch.
  */
 function LivePlayerLabels({
   homeXI,
@@ -1182,23 +1223,35 @@ function LivePlayerLabels({
   const homeOutfield = useGameStore((s) => s.homeOutfield);
   const awayOutfield = useGameStore((s) => s.awayOutfield);
   const controlledIndex = useGameStore((s) => s.controlledIndex);
+  const ball = useGameStore((s) => s.ball);
 
-  const homeLabels = homeXI.map((e, i) => ({
-    id: e.role.id,
-    position: homeOutfield[i]?.position ?? e.body.position,
-    name: e.player.name,
-    color: homeClub.primaryColor,
-    controlled: i === controlledIndex,
-  }));
-  const awayLabels = awayXI.map((e, i) => ({
-    id: e.role.id,
-    position: awayOutfield[i]?.position ?? e.body.position,
-    name: e.player.name,
-    color: awayClub.primaryColor,
-    controlled: false,
-  }));
+  // Build a full list with distances from ball, mark which are visible.
+  type Entry = { id: string; position: { x: number; z: number }; name: string; color: string; controlled: boolean; distToBall: number };
+  const all: Entry[] = [
+    ...homeXI.map((e, i) => ({
+      id: e.role.id,
+      position: homeOutfield[i]?.position ?? e.body.position,
+      name: e.player.name,
+      color: homeClub.primaryColor,
+      controlled: i === controlledIndex,
+      distToBall: Math.hypot((homeOutfield[i]?.position.x ?? 0) - ball.position.x, (homeOutfield[i]?.position.z ?? 0) - ball.position.z),
+    })),
+    ...awayXI.map((e, i) => ({
+      id: e.role.id,
+      position: awayOutfield[i]?.position ?? e.body.position,
+      name: e.player.name,
+      color: awayClub.primaryColor,
+      controlled: false,
+      distToBall: Math.hypot((awayOutfield[i]?.position.x ?? 0) - ball.position.x, (awayOutfield[i]?.position.z ?? 0) - ball.position.z),
+    })),
+  ];
 
-  return <PlayerLabels players={[...homeLabels, ...awayLabels]} />;
+  // Always show controlled player; also show the 3 closest to ball.
+  const byDist = [...all].sort((a, b) => a.distToBall - b.distToBall);
+  const nearIds = new Set(byDist.slice(0, 3).map((e) => e.id));
+  const visible = all.filter((e) => e.controlled || nearIds.has(e.id));
+
+  return <PlayerLabels players={visible} />;
 }
 
 /**

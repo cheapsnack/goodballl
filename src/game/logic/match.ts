@@ -6,7 +6,7 @@ import { FIELD, goalLineX } from "./field";
 export const MATCH_TUNING = {
   /** number of periods in a match */
   periods: 2,
-  /** length of a period in real (wall-clock) seconds — 2 minutes each half */
+  /** length of each period in real (wall-clock) seconds — 2 min per half = 4 min total */
   periodSeconds: 120,
   /** how long the GOAL! banner holds before the reset */
   goalCelebration: 3.2,
@@ -14,16 +14,8 @@ export const MATCH_TUNING = {
   kickoffPause: 1.4,
   /** how long the half-time break holds */
   halfTimePause: 3,
-  /**
-   * How long a throw-in/corner/goal-kick pauses before the restart goes
-   * live. Short on purpose — this used to be 1.1s with everyone frozen
-   * solid, which read as the match just stopping dead. Players now keep
-   * moving into position during the countdown (see MatchScene), so this
-   * only needs to cover the whistle and the "Corner"/"Throw-in" banner.
-   */
+  /** how long a throw-in/corner/goal-kick pauses before going live */
   restartPause: 0.55,
-  /** how much faster the displayed clock runs than real time (1 = realtime) */
-  clockScale: 1,
 } as const;
 
 export type MatchStatus =
