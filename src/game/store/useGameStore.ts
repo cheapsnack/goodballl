@@ -12,6 +12,7 @@ import { MATCH_TUNING, type MatchStatus, type Score, type TeamSide } from "../lo
 import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clubs";
 import type { Restart } from "../logic/restarts";
 import type { Possession } from "../logic/possession";
+import type { Booking } from "../logic/bookings";
 
 export const PITCH = {
   length: FIELD.length,
@@ -124,6 +125,8 @@ type GameState = {
    * see possession.ts for why that replaced the old physics-pull dribble.
    */
   possession: Possession | null;
+  /** Every card shown in this match, in chronological order. Bottom-of-screen HUD reads from this. */
+  bookings: Booking[];
 
   /** --- club selection, set from the menu before kickoff --- */
   homeClubId: string;
@@ -196,6 +199,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   statusTimer: MATCH_TUNING.kickoffPause,
   lastScorer: null,
   lastTouch: "home",
+  bookings: [],
 
   homeClubId: DEFAULT_HOME_CLUB_ID,
   awayClubId: DEFAULT_AWAY_CLUB_ID,
@@ -247,5 +251,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       statusTimer: MATCH_TUNING.kickoffPause,
       lastScorer: null,
       lastTouch: "home",
+      bookings: [],
     }),
 }));

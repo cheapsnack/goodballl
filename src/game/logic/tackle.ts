@@ -1,4 +1,4 @@
-import type { BallState } from "../types";
+import type { BallState, Kinematics } from "../types";
 
 /**
  * Slide-tackle feel. A tackle is a short committed dash rather than a held
@@ -18,6 +18,14 @@ export const TACKLE_TUNING = {
   reach: 1.3,
   /** speed given to the ball when a tackle connects, knocking it loose */
   impulseSpeed: 10,
+  /**
+   * If a tackle dash reaches within this radius of an *opponent's body*
+   * without first winning the ball, it counts as a foul. Represents the
+   * "clattered into the player, not the ball" case. Slightly larger than
+   * the ball reach — you can win it clean if you're that little bit closer
+   * to the ball than the player, foul if you're not.
+   */
+  foulRadius: 1.5,
 } as const;
 
 /**
@@ -40,6 +48,27 @@ export function attemptTackleImpulse(
     ...ball,
     velocity: { x: nx * TACKLE_TUNING.impulseSpeed, y: ball.velocity.y, z: nz * TACKLE_TUNING.impulseSpeed },
   };
+}
+
+/**
+ * If a tackle dash misses the ball but clatters into an opponent's body,
+ * returns the index of the fouled opponent. Called *after* attemptTackleImpulse
+ * has been given first refusal — only fires if that returned null. Pure.
+ */
+export function detectFoulOnOpponent(
+  tacklerPos: { x: number; z: number },
+  opponents: Kinematics[],
+): number | null {
+  let best = -1;
+  let bestDist: number = TACKLE_TUNING.foulRadius;
+  opponents.forEach((o, i) => {
+    const dist = Math.hypot(o.position.x - tacklerPos.x, o.position.z - tacklerPos.z);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  });
+  return best >= 0 ? best : null;
 }
 
 /** Dash velocity added when a tackle begins, in the tackler's facing direction. */

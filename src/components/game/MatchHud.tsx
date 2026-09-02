@@ -1,5 +1,6 @@
 import { useGameStore } from "../../game/store/useGameStore";
 import { displayClock, formatClock, MATCH_TUNING } from "../../game/logic/match";
+import type { Booking } from "../../game/logic/bookings";
 
 const TEAMS = {
   home: { short: "YOU", color: "#e2542c" },
@@ -14,6 +15,7 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
   const status = useGameStore((s) => s.matchStatus);
   const lastScorer = useGameStore((s) => s.lastScorer);
   const netRole = useGameStore((s) => s.netRole);
+  const bookings = useGameStore((s) => s.bookings);
   const awayLabel = netRole === "local" ? "AI" : "P2";
 
   const clock = formatClock(displayClock(period, matchTime));
@@ -78,7 +80,43 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
           </div>
         </Banner>
       )}
+
+      {/* Bookings ticker along the bottom edge — quiet when empty. */}
+      {bookings.length > 0 && <BookingsTicker bookings={bookings} awayLabel={awayLabel} />}
     </>
+  );
+}
+
+function BookingsTicker({ bookings, awayLabel }: { bookings: Booking[]; awayLabel: string }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-10 flex justify-center px-4">
+      <div className="flex max-w-full items-center gap-3 overflow-x-auto rounded-md bg-foreground/80 px-4 py-2 font-sans text-[11px] text-background shadow-lg backdrop-blur-sm">
+        <span className="shrink-0 font-bold uppercase tracking-[0.2em] text-background/60">
+          Bookings
+        </span>
+        {bookings.map((b, i) => (
+          <div key={i} className="flex shrink-0 items-center gap-1.5">
+            <span
+              aria-hidden
+              className={`inline-block h-3.5 w-2.5 rounded-sm ${
+                b.color === "yellow" ? "bg-yellow-400" : "bg-red-500"
+              }`}
+              style={{ boxShadow: "0 0 0 1px rgba(0,0,0,0.3)" }}
+            />
+            <span className="font-mono tabular-nums text-background/50">{b.minute}'</span>
+            <span className="font-semibold">{b.playerName}</span>
+            <span className="text-background/40">
+              ({b.team === "home" ? "YOU" : awayLabel})
+            </span>
+            {b.color === "red" && (
+              <span className="ml-1 rounded-sm bg-red-500/80 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-white">
+                Sent off
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

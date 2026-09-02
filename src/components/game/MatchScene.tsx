@@ -39,7 +39,8 @@ import {
   RESTART_CLEARANCE,
 } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
-import { attemptTackleImpulse, tackleDash, TACKLE_TUNING } from "../../game/logic/tackle";
+import { attemptTackleImpulse, detectFoulOnOpponent, tackleDash, TACKLE_TUNING } from "../../game/logic/tackle";
+import { cardForFoul, type Booking } from "../../game/logic/bookings";
 import { getClub, playerAt } from "../../game/data/clubs";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
@@ -824,6 +825,22 @@ export function MatchScene() {
     const tackleTargetPos = possession ? bodyOf(possession.team, possession.index).position : ball.position;
     const ballForTackle: BallState = { ...ball, position: { ...ball.position, ...tackleTargetPos } };
 
+    // Fouls & bookings from a mistimed tackle: attemptTackleImpulse gets
+    // first refusal on each side; if it returns null but the tackler is
+    // still crashing into an opposing body, it's a foul → yellow (or a
+    // second yellow → red for that player). New bookings are staged into
+    // this local array so we can flush them into the store in one write.
+    let bookings = store.bookings;
+    const stageBooking = (offenderTeam: TeamSide, offenderIndex: number) => {
+      const roster = offenderTeam === "home" ? homeXI : awayXI;
+      const playerName = roster[offenderIndex]?.player.name ?? "Unknown";
+      const color = cardForFoul(bookings, { team: offenderTeam, playerIndex: offenderIndex });
+      const minute = Math.floor(store.matchTime / 60) + 1;
+      const booking: Booking = { team: offenderTeam, playerIndex: offenderIndex, playerName, color, minute };
+      bookings = [...bookings, booking];
+      playWhistle();
+    };
+
     if (tackleState.current.active > 0 && (restartLock === null || restartLock === "home")) {
       const knocked = attemptTackleImpulse(ballForTackle, controlled.position);
       if (knocked) {
@@ -838,6 +855,13 @@ export function MatchScene() {
         };
         tackleState.current.active = 0;
         playKick(0.55);
+      } else {
+        // Whiffed on the ball but check for a foul on any away player.
+        const victim = detectFoulOnOpponent(controlled.position, store.awayOutfield);
+        if (victim !== null) {
+          stageBooking("home", controlledIndex);
+          tackleState.current.active = 0;
+        }
       }
     }
     if (
@@ -858,6 +882,12 @@ export function MatchScene() {
         };
         awayTackleState.current.active = 0;
         playKick(0.55);
+      } else {
+        const victim = detectFoulOnOpponent(awayControlled.position, store.homeOutfield);
+        if (victim !== null) {
+          stageBooking("away", awayControlledIndex ?? 0);
+          awayTackleState.current.active = 0;
+        }
       }
     }
 
@@ -952,6 +982,7 @@ export function MatchScene() {
         lastTouch,
         restartLock: null,
         possession: null,
+        bookings,
       });
       useGameStore.getState().recordGoal(goal.scorer);
       playWhistle();
@@ -980,6 +1011,7 @@ export function MatchScene() {
         restart: outOfBounds,
         restartLock: null,
         possession: null,
+        bookings,
         matchStatus: "restart",
         statusTimer: MATCH_TUNING.restartPause,
       });
@@ -1015,6 +1047,7 @@ export function MatchScene() {
       lastTouch,
       restartLock,
       possession,
+      bookings,
     });
 
     syncMeshes({ homeOutfield, homeGK, homeGKState, awayOutfield, awayGK, awayGKState, ball }, dt);
