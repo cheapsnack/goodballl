@@ -21,19 +21,30 @@ export const BALL_TUNING = {
  */
 export const STRIKE_TUNING = {
   /** seconds of holding to reach full power */
-  chargeTime: 0.85,
+  chargeTime: 0.7,
   /** power floor on an instant tap (0..1) */
-  minPower: 0.24,
+  minPower: 0.35,
   /** how much of the player's closing speed is added to the strike */
-  momentumTransfer: 0.4,
+  momentumTransfer: 0.3,
   /** seconds after a strike where the dribble pull is disabled */
-  cooldown: 0.3,
-  /** how close the ball must be to be strikeable */
-  reach: 2.1,
+  cooldown: 0.55,
+  /**
+   * How close the possessed ball must be to be strikeable. With the
+   * possession-lock system the ball always sits ~0.5m ahead of the player,
+   * so this must be larger than that — but not so large that a player can
+   * shoot from across the pitch. The actual range check in canStrike now
+   * passes for any possessed ball (since the possessor is by definition
+   * in range) and the reach here only matters for loose balls.
+   */
+  reach: 1.4,
   /** ball can't be struck above this height */
   maxStrikeHeight: 1.6,
-  /** movement input is scaled by this while charging */
-  chargeMoveScale: 0.74,
+  /**
+   * Movement is fully frozen while charging — this was the source of the
+   * "player slides into shoot" look. A player winding up a shot should
+   * plant and slow, not keep running at 74% and carry their animation.
+   */
+  chargeMoveScale: 0.0,
   /** pass assist blend toward a target (0 = none, 1 = fully homing) */
   assistWeight: 0.55,
   /** target must be at least this aligned with facing to attract the pass */

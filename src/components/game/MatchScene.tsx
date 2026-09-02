@@ -30,7 +30,7 @@ import {
   aiShotDirection,
 } from "../../game/logic/ai/outfield";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
-import { possessionBallPosition, tryCapture, type Possession } from "../../game/logic/possession";
+import { possessionBallPosition, tryCapture, trySteal, type CaptureCandidate, type Possession } from "../../game/logic/possession";
 import { detectGoal, isPlayFrozen, MATCH_TUNING, type TeamSide } from "../../game/logic/match";
 import {
   clearSpaceAroundRestart,
@@ -46,6 +46,7 @@ import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
 import type { GuestInputPayload } from "../../multiplayer/types";
 import type { BallState, Kinematics, MovementInput } from "../../game/types";
+import { PlayerLabels } from "./PlayerLabels";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -609,8 +610,19 @@ export function MatchScene() {
     // resolved to a final value at the very end of the frame.
     let possession = store.possession;
 
+    // If either human just started a tackle dash this frame, immediately
+    // drop possession so the ball goes loose — not glued to a sprinting body.
+    if (tackleState.current.active >= TACKLE_TUNING.activeWindow - 0.01 &&
+        possession?.team === "home" && possession.index === controlledIndex) {
+      possession = null;
+    }
+    if (awayTackleState.current.active >= TACKLE_TUNING.activeWindow - 0.01 &&
+        possession?.team === "away" && possession.index === (awayControlledIndex ?? -1)) {
+      possession = null;
+    }
+
     // --- strikes: releasing the charge always gives up possession ---
-    if (released && canStrike(controlled, ball) && (restartLock === null || restartLock === "home")) {
+    if (released && canStrike(controlled, ball, possession?.team === "home" && possession?.index === controlledIndex) && (restartLock === null || restartLock === "home")) {
       // Shots get a light on-target nudge toward goal centre; passing has no
       // teammate-lock-on target yet, so it's pure facing direction.
       const goalTarget =
@@ -633,7 +645,7 @@ export function MatchScene() {
     if (
       awayControlled &&
       awayReleased &&
-      canStrike(awayControlled, ball) &&
+      canStrike(awayControlled, ball, possession?.team === "away" && possession?.index === awayControlledIndex) &&
       (restartLock === null || restartLock === "away")
     ) {
       const goalTarget =
@@ -903,16 +915,55 @@ export function MatchScene() {
     // --- ball resolution: glue it to whoever has it, or run real physics for a loose ball ---
     if (possession) {
       const possessor = bodyOf(possession.team, possession.index);
-      const speedFrac = Math.hypot(possessor.velocity.x, possessor.velocity.z) / POSSESSION_SPEED_REF;
-      const pos = possessionBallPosition(possessor, speedFrac);
-      ball = {
-        position: { x: pos.x, y: BALL_RADIUS, z: pos.z },
-        velocity: possessor.velocity,
-        heading: possessor.heading,
-        spin: ball.spin,
-      };
-      lastTouch = possession.team;
-    } else {
+
+      // Check whether an opponent has gotten close enough to steal it.
+      // This is how you win the ball back without a tackle: run your player
+      // right up to the carrier's body. The steal radius is deliberately
+      // generous — the old system required you to reach the floating ball
+      // point (0.5m further away from the carrier), which is why it felt
+      // impossible to dispossess anyone.
+      if (restartLock === null || restartLock !== possession.team) {
+        const opponentBodies: CaptureCandidate[] = [];
+        const stealTeam: TeamSide = possession.team === "home" ? "away" : "home";
+        if (stealTeam === "home") {
+          homeOutfield.forEach((b, i) => opponentBodies.push({ team: "home", index: i, body: b }));
+        } else {
+          awayOutfield.forEach((b, i) => opponentBodies.push({ team: "away", index: i, body: b }));
+        }
+        const stolen = trySteal(possessor, opponentBodies);
+        if (stolen) {
+          possession = stolen;
+          lastTouch = stolen.team;
+          restartLock = null;
+          // Give the stealer the ball at their own feet immediately.
+          const newPossessor = bodyOf(stolen.team, stolen.index);
+          const pos = possessionBallPosition(newPossessor, 0);
+          ball = {
+            position: { x: pos.x, y: BALL_RADIUS, z: pos.z },
+            velocity: { x: 0, y: 0, z: 0 },
+            heading: newPossessor.heading,
+            spin: ball.spin,
+          };
+        }
+      }
+
+      // Glue the ball to whoever still has possession (may have just changed above).
+      if (possession) {
+        const currentPossessor = bodyOf(possession.team, possession.index);
+        const speedFrac =
+          Math.hypot(currentPossessor.velocity.x, currentPossessor.velocity.z) / POSSESSION_SPEED_REF;
+        const pos = possessionBallPosition(currentPossessor, speedFrac);
+        ball = {
+          position: { x: pos.x, y: BALL_RADIUS, z: pos.z },
+          velocity: currentPossessor.velocity,
+          heading: currentPossessor.heading,
+          spin: ball.spin,
+        };
+        lastTouch = possession.team;
+      }
+    }
+
+    if (!possession) {
       ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
       // --- goalkeeper saves work on a loose ball only, against their fresh (post-movement) positions ---
@@ -1103,8 +1154,56 @@ export function MatchScene() {
         <ringGeometry args={[0.62, 0.78, 28]} />
         <meshBasicMaterial color="#fff45c" transparent opacity={0.85} side={THREE.DoubleSide} />
       </mesh>
+
+      {/* Player name labels — driven by a reactive sub-component so they
+          update from the store without re-rendering the whole MatchScene. */}
+      <LivePlayerLabels
+        homeXI={homeXI}
+        awayXI={awayXI}
+        homeClub={homeClub}
+        awayClub={awayClub}
+      />
     </>
   );
+}
+
+/**
+ * Reads positions and the controlled index from the store reactively (up to
+ * the store's update frequency) and delegates rendering to PlayerLabels.
+ * Isolated as its own component so re-renders from the store don't cascade
+ * into the main MatchScene (which is only re-rendered on React mount).
+ */
+function LivePlayerLabels({
+  homeXI,
+  awayXI,
+  homeClub,
+  awayClub,
+}: {
+  homeXI: ReturnType<typeof buildOutfield>;
+  awayXI: ReturnType<typeof buildOutfield>;
+  homeClub: ReturnType<typeof getClub>;
+  awayClub: ReturnType<typeof getClub>;
+}) {
+  const homeOutfield = useGameStore((s) => s.homeOutfield);
+  const awayOutfield = useGameStore((s) => s.awayOutfield);
+  const controlledIndex = useGameStore((s) => s.controlledIndex);
+
+  const homeLabels = homeXI.map((e, i) => ({
+    id: e.role.id,
+    position: homeOutfield[i]?.position ?? e.body.position,
+    name: e.player.name,
+    color: homeClub.primaryColor,
+    controlled: i === controlledIndex,
+  }));
+  const awayLabels = awayXI.map((e, i) => ({
+    id: e.role.id,
+    position: awayOutfield[i]?.position ?? e.body.position,
+    name: e.player.name,
+    color: awayClub.primaryColor,
+    controlled: false,
+  }));
+
+  return <PlayerLabels players={[...homeLabels, ...awayLabels]} />;
 }
 
 /**

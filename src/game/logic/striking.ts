@@ -37,8 +37,13 @@ export function stepCharge(charge: ChargeState, actions: ActionInput, dt: number
   };
 }
 
-/** True when the ball is close enough (and low enough) for the player to strike it. */
-export function canStrike(player: Kinematics, ball: BallState): boolean {
+/**
+ * True when the player can strike the ball. For a possessed ball the player
+ * is *always* in range by construction (the ball is glued to their feet).
+ * For a loose ball the original distance check applies.
+ */
+export function canStrike(player: Kinematics, ball: BallState, hasPossession = false): boolean {
+  if (hasPossession) return ball.position.y <= STRIKE_TUNING.maxStrikeHeight;
   const dist = Math.hypot(ball.position.x - player.position.x, ball.position.z - player.position.z);
   return dist <= STRIKE_TUNING.reach && ball.position.y <= STRIKE_TUNING.maxStrikeHeight;
 }
