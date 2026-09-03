@@ -531,17 +531,30 @@ export function SetPiece3DScene({
         <directionalLight position={[4, 8, 6]} intensity={1.6} />
         <hemisphereLight args={["#c8e8ff", "#1a4025", 0.5]} />
 
-        {/* Pitch surface */}
+        {/* Pitch surface + mown stripes for depth */}
         <mesh rotation-x={-Math.PI / 2} position={[0, 0, 3]} receiveShadow>
-          <planeGeometry args={[30, 30]} />
-          <meshStandardMaterial color="#245c2a" roughness={0.9} />
+          <planeGeometry args={[40, 40]} />
+          <meshStandardMaterial color="#245c2a" roughness={0.95} />
+        </mesh>
+        {Array.from({ length: 10 }, (_, i) => (
+          <mesh
+            key={i}
+            rotation-x={-Math.PI / 2}
+            position={[0, 0.001, -3 + i * 2.4]}
+            visible={i % 2 === 0}
+          >
+            <planeGeometry args={[40, 2.4]} />
+            <meshBasicMaterial color="#2b6b32" transparent opacity={0.55} />
+          </mesh>
+        ))}
+
+        {/* Six-yard box, penalty box front edge and the spot */}
+        <BoxLines />
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.006, CAM_Z - 0.05]}>
+          <circleGeometry args={[0.11, 16]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
         </mesh>
 
-        {/* Penalty spot */}
-        <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, CAM_Z - 0.05]}>
-          <circleGeometry args={[0.08, 12]} />
-          <meshStandardMaterial color="#ffffff" opacity={0.7} transparent />
-        </mesh>
 
         {/* Goal frame */}
         <GoalNet />
