@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -544,7 +544,7 @@ export function SetPiece3DScene({
         dpr={[1, 1.5]}
         camera={{ position: [0, CAM_Y, CAM_Z], fov: 40, near: 0.1, far: 60 }}
         gl={{ antialias: true, alpha: false }}
-        style={{ background: "linear-gradient(#16321f 0%, #1d4128 45%, #27553４ 100%)" }}
+        style={{ background: "linear-gradient(#16321f 0%, #1d4128 45%, #275534 100%)" }}
       >
         <color attach="background" args={["#17331f"]} />
         <fog attach="fog" args={["#17331f", 26, 46]} />
