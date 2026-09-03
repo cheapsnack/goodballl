@@ -149,6 +149,14 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-[#0b1410]/95 px-4 text-background">
+      {onExit && (
+        <button
+          onClick={onExit}
+          className="absolute right-4 top-4 rounded-md border border-background/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-background/70 transition-colors hover:bg-background/10"
+        >
+          End game
+        </button>
+      )}
       <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
         Penalty Shootout
       </div>
