@@ -13,10 +13,14 @@ import {
   type PenaltyOutcome,
 } from "../../game/logic/penalties";
 
-/** How fast the reticle slides across the goal, in normalized units per second. */
-const AIM_SPEED = { x: 1.5, y: 1.1 };
+/**
+ * How fast the reticle slides across the goal, in normalized units per
+ * second. Slowed down from the first pass — the reticle used to shoot past
+ * the corner you were aiming for before you could release.
+ */
+const AIM_SPEED = { x: 0.85, y: 0.65 };
 /** Seconds of holding Space to reach full power. */
-const POWER_TIME = 0.8;
+const POWER_TIME = 1.1;
 /** How long the result of a kick stays on screen before the next taker. */
 const RESULT_HOLD = 1.4;
 
