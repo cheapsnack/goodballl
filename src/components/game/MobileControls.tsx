@@ -113,6 +113,10 @@ export function MobileControls({ stateRef, compact }: Props) {
   const CX = BTN_SIZE / 2;
   const SPREAD = BTN_SIZE + (compact ? 6 : 8);
 
+  // Only show on real touch devices — a narrow desktop window is still a
+  // desktop, so screen width alone is the wrong test.
+  if (!isTouch) return null;
+
   return (
     <div
       style={{
@@ -123,12 +127,6 @@ export function MobileControls({ stateRef, compact }: Props) {
         touchAction: "none",
       }}
     >
-      {/* Hide on screens wider than 1024px (desktop) — show only on touch devices */}
-      <style>{`
-        @media (min-width: 1024px) and (hover: hover) {
-          .mobile-controls-root { display: none !important; }
-        }
-      `}</style>
       <div className="mobile-controls-root" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
       {/* ── LEFT: Virtual joystick ── */}
       <div
