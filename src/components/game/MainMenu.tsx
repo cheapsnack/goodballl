@@ -156,7 +156,7 @@ export function MainMenu({
         }}
       />
       <div className="relative w-full max-w-md px-6 py-6 text-center sm:px-8 sm:py-10">
-        <div className="text-[10px] font-bold uppercase tracking-[0.42em] text-background/50 sm:text-[11px]">
+        <div className="[text-indent:0.42em] break-words text-[10px] font-bold uppercase tracking-[0.42em] text-background/50 sm:text-[11px]">
           {mode === "ai"
             ? "Kickoff Mode"
             : mode === "local2p"
@@ -167,11 +167,12 @@ export function MainMenu({
                   ? "Free Kick Practice"
                   : "Play vs Friend"}
         </div>
-        <h1 className="mt-2 font-sans text-5xl font-black uppercase leading-[0.9] tracking-tight text-background sm:mt-3 sm:text-6xl">
+        <h1 className="mt-2 break-words py-1 font-sans text-[clamp(2.25rem,13vw,3rem)] font-black uppercase leading-[1.05] tracking-tight text-background sm:mt-3 sm:text-6xl">
           Arcade
           <br />
           <span className="text-[#63d68a]">Football</span>
         </h1>
+
         <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-background/60 sm:mt-4">
           {MATCH_TUNING.periods} halves · {minutes} minutes · 11 v 11 · switch players with Q.
         </p>
