@@ -33,7 +33,7 @@ export function PlayerNamesPanel() {
 
       if (twoHuman) {
         const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE, s.mentality);
-        const theirs = awayXI[s.awayControlledIndex];
+        const theirs = s.awayControlledIndex == null ? undefined : awayXI[s.awayControlledIndex];
         setAway(
           theirs
             ? { name: theirs.player.name, color: awayClub.primaryColor, club: awayClub.shortName }
