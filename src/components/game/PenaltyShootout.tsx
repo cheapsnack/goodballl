@@ -134,6 +134,18 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             ? dive
             : toScene(kickAim);
       setBall({ x: target.x, y: target.y, scale: 0.55, ms: flight });
+      // Hand the same numbers to the 3D scene so its ball flies the identical
+      // path (no bend on a penalty) and the keeper dives within the flight.
+      setKick3d({
+        id: kickSeq.current++,
+        aim: kickAim,
+        curve: 0,
+        power: p,
+        outcome: shot,
+        flightMs: flight,
+        keeperTarget: guess,
+      });
+
 
       after(flight, () => {
         setOutcome(shot);
