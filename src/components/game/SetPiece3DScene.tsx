@@ -341,10 +341,15 @@ function Wall({
 export type SetPiece3DSceneProps = {
   /** Kit primary colour of the defending team (keeper + wall). */
   defenderColor: string;
-  /** Optional wall config — `{ x: -1..1, halfWidth: 0..1 }`. If null/undefined, no wall shown. */
-  wallData?: { x: number; halfWidth: number } | null | undefined;
-  /** Which side the wall leans (-1 = left, 1 = right). */
-  wallSide?: -1 | 1 | undefined;
+  /** Optional wall config — straight from `buildWall()` in the free-kick maths. */
+  wallData?: { x: number; halfWidth: number; height?: number } | null | undefined;
+  /** Kit accent colour for shorts/socks of the defending side. */
+  defenderAccent?: string | undefined;
+  /**
+   * Keeper reach in goal half-widths, from the same tuning that decides the
+   * outcome (PENALTY_TUNING / FREEKICK_TUNING scaled by difficulty).
+   */
+  keeperReach?: number | undefined;
   /** When non-null, triggers the keeper dive animation toward this normalised goal position. */
   keeperDiveTarget?: { x: number; y: number } | null | undefined;
   /** The kick in flight — drives the 3D ball path and keeper dive timing. */
