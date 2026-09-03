@@ -6,10 +6,14 @@ import { ControlsHint } from "./ControlsHint";
 import { PowerBar } from "./PowerBar";
 import { MatchHud } from "./MatchHud";
 import { SoundToggle } from "./SoundToggle";
+import { PenaltyShootout } from "./PenaltyShootout";
+import { useGameStore } from "../../game/store/useGameStore";
 
 const SKY = "#8fc3e8";
 
 export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
+  const inShootout = useGameStore((s) => s.matchStatus === "penalties");
+
   return (
     <div className="fixed inset-0">
       <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 26, 30], fov: 45, far: 600 }}>
@@ -49,6 +53,8 @@ export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
       <SoundToggle />
       <PowerBar />
       <ControlsHint />
+      {/* Drawn after extra time — the shootout takes over the screen. */}
+      {inShootout && <PenaltyShootout onExit={onExit} />}
     </div>
   );
 }

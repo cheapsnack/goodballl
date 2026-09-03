@@ -1,5 +1,5 @@
 import { useGameStore } from "../../game/store/useGameStore";
-import { displayClock, formatClock, MATCH_TUNING } from "../../game/logic/match";
+import { displayClock, formatClock, MATCH_TUNING, periodLabel } from "../../game/logic/match";
 import type { Booking } from "../../game/logic/bookings";
 
 const TEAMS = {
@@ -37,7 +37,7 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
               {clock}
             </span>
             <span className="text-[9px] font-semibold uppercase tracking-[0.18em] opacity-60">
-              {period === 1 ? "1st half" : "2nd half"}
+              {periodLabel(period)}
             </span>
           </div>
         </div>
@@ -51,10 +51,17 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
           accent={TEAMS[lastScorer].color}
         />
       )}
-      {status === "kickoff" && (
-        <Banner title="KICK OFF" subtitle={period === 1 ? "First half" : "Second half"} />
+      {status === "kickoff" && <Banner title="KICK OFF" subtitle={periodLabel(period)} />}
+      {status === "halftime" && (
+        <Banner
+          title={period >= MATCH_TUNING.periods ? "BREAK" : "HALF TIME"}
+          subtitle={`${score.home} - ${score.away}`}
+        />
       )}
-      {status === "halftime" && <Banner title="HALF TIME" subtitle={`${score.home} - ${score.away}`} />}
+      {status === "extratime" && (
+        <Banner title="EXTRA TIME" subtitle={`Level at ${score.home} - ${score.away}`} />
+      )}
+
       {status === "fulltime" && (
         <Banner
           title="FULL TIME"

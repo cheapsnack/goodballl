@@ -8,7 +8,7 @@ import { useGameStore } from "../../game/store/useGameStore";
 import { createRoom, joinRoom } from "../../multiplayer/roomClient";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 
-type Mode = "ai" | "local2p" | "friend";
+type Mode = "ai" | "local2p" | "friend" | "penalties";
 type FriendStep = "choose" | "create-waiting" | "join-form" | "connecting";
 const DIFFICULTIES: Difficulty[] = ["beginner", "amateur", "advanced", "expert"];
 const MENTALITIES: Mentality[] = ["defensive", "balanced", "attacking"];
@@ -18,7 +18,7 @@ const MENTALITIES: Mentality[] = ["defensive", "balanced", "attacking"];
  * no WebGL context is created) until the player commits — this also gives us
  * the user gesture WebAudio needs before it will make a sound.
  */
-export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
+export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penalties") => void }) {
   const [sound, setSound] = useState(isAudioEnabled());
   const [homeId, setHomeId] = useState(DEFAULT_HOME_CLUB_ID);
   const [awayId, setAwayId] = useState(DEFAULT_AWAY_CLUB_ID);
@@ -84,6 +84,15 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
     setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
     setNetRoom("local2p", null, null);
     onKickoff();
+  };
+
+  /** Standalone shootout — no match simulation, straight to the spot. */
+  const startPenalties = () => {
+    if (sound) initAudio();
+    setAudioEnabled(sound);
+    setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
+    setNetRoom("local", null, null);
+    onKickoff("penalties");
   };
 
   const startCreateRoom = async () => {
@@ -156,6 +165,9 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
           <ModeTab active={mode === "friend"} onClick={() => setMode("friend")}>
             Vs Friend
           </ModeTab>
+          <ModeTab active={mode === "penalties"} onClick={() => { setMode("penalties"); cancelFriendFlow(); }}>
+            Penalties
+          </ModeTab>
         </div>
 
         {mode === "ai" && (
@@ -172,6 +184,25 @@ export function MainMenu({ onKickoff }: { onKickoff: () => void }) {
             </button>
           </>
         )}
+
+        {mode === "penalties" && (
+          <>
+            <ClubPicker label="Your Club" selectedId={homeId} onSelect={setHomeId} />
+            <ClubPicker label="Opponent" selectedId={awayId} onSelect={setAwayId} />
+            <DifficultyPicker selected={difficulty} onSelect={setDifficulty} />
+            <div className="mt-6 rounded-md bg-background/5 px-4 py-3 text-left text-xs leading-relaxed text-background/60">
+              <span className="font-bold text-background/80">Best of five, then sudden death.</span>{" "}
+              Aim with the arrows or WASD, hold Space to build power, release to strike.
+            </div>
+            <button
+              onClick={startPenalties}
+              className="mt-6 w-full rounded-md bg-[#63d68a] px-6 py-4 font-sans text-lg font-black uppercase tracking-[0.2em] text-[#0d1a12] transition-transform hover:scale-[1.02] active:scale-[0.99]"
+            >
+              Take Penalties
+            </button>
+          </>
+        )}
+
 
         {mode === "local2p" && (
           <>
