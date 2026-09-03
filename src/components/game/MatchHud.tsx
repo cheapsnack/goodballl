@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { useGameStore } from "../../game/store/useGameStore";
 import { displayClock, formatClock, MATCH_TUNING, periodLabel } from "../../game/logic/match";
 import type { Booking } from "../../game/logic/bookings";
+import { ExitConfirm } from "./ExitConfirm";
 
 const TEAMS = {
   home: { short: "YOU", color: "#e2542c" },
@@ -18,6 +20,8 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
   const bookings = useGameStore((s) => s.bookings);
   const awayLabel = netRole === "local" ? "AI" : "P2";
 
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
   const clock = formatClock(displayClock(period, matchTime));
 
   return (
@@ -25,12 +29,21 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
       {/* Always-available way out of a match, back to the main menu. */}
       {onExit && status !== "fulltime" && (
         <button
-          onClick={onExit}
+          onClick={() => setShowExitConfirm(true)}
           className="fixed right-4 top-5 z-20 rounded-md bg-foreground/80 px-4 py-2 font-sans text-[10px] font-black uppercase tracking-[0.22em] text-background/80 shadow-lg backdrop-blur-sm transition-colors hover:text-background"
         >
           End game
         </button>
       )}
+
+      <ExitConfirm
+        open={showExitConfirm}
+        onResume={() => setShowExitConfirm(false)}
+        onExit={() => {
+          setShowExitConfirm(false);
+          onExit?.();
+        }}
+      />
 
       {/* Broadcast score bug */}
       <div className="pointer-events-none fixed left-1/2 top-5 z-10 -translate-x-1/2">
