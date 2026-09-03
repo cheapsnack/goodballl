@@ -348,6 +348,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         {/* 3D POV scene — goal with animated keeper */}
         <SetPiece3DScene
           defenderColor={awayClub.primaryColor}
+          defenderAccent={awayClub.secondaryColor}
+          keeperReach={PENALTY_TUNING.keeperReach * level.keeperReachScale}
           keeperDiveTarget={kick3d?.keeperTarget ?? null}
           kick={kick3d}
           showBall={false}
@@ -410,7 +412,10 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             className="h-full rounded-full transition-[width] duration-75"
             style={{
               width: `${power * 100}%`,
-              background: power < 0.5 ? "#63d68a" : power < 0.8 ? "#f5c518" : "#e83a3a",
+              // One gradient across the whole track: the fill starts green and
+              // only warms up as it approaches full power.
+              backgroundImage: "linear-gradient(90deg,#63d68a 0%,#a8e05a 45%,#f5c518 72%,#e83a3a 100%)",
+              backgroundSize: `${100 / Math.max(power, 0.02)}% 100%`,
             }}
           />
         </div>

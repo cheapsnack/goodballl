@@ -344,8 +344,9 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         {/* 3D player run-up */}
         <SetPiece3DScene
           defenderColor={awayClub.primaryColor}
+          defenderAccent={awayClub.secondaryColor}
           wallData={wall}
-          wallSide={wallSide}
+          keeperReach={FREEKICK_TUNING.keeperReach * level.keeperReachScale}
           keeperDiveTarget={kick3d?.keeperTarget ?? null}
           kick={kick3d}
           showBall={false}
@@ -488,8 +489,15 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         </div>
         <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-background/15">
           <div
-            className="h-full rounded-full bg-[#63d68a]"
-            style={{ width: `${power * 100}%` }}
+            className="h-full rounded-full"
+            style={{
+              width: `${power * 100}%`,
+              // Gradient spans the whole track, so the green zone is always
+              // visible at the start of the fill instead of the bar jumping
+              // straight to a solid warning colour.
+              backgroundImage: "linear-gradient(90deg,#63d68a 0%,#a8e05a 45%,#f5c518 72%,#e83a3a 100%)",
+              backgroundSize: `${100 / Math.max(power, 0.02)}% 100%`,
+            }}
           />
         </div>
         <button

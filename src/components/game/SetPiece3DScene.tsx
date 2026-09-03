@@ -168,29 +168,49 @@ function Ball({ kick }: { kick: SetPieceKick | null }) {
   );
 }
 
+/**
+ * Clones the rigged footballer and tints only the kit meshes, leaving skin,
+ * hair and boots as authored — painting every mesh one colour was what made
+ * the figures read as flat placeholder silhouettes.
+ */
+function useKitClone(scene: THREE.Object3D, jersey: string, shorts: string) {
+  const clonedRef = useRef<THREE.Group | null>(null);
+  if (!clonedRef.current) {
+    const clone = cloneSkeleton(scene) as THREE.Group;
+    clone.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
+      if (mesh.name === "Player_Jersey") mat.color.set(jersey);
+      else if (mesh.name === "Player_Shorts" || mesh.name === "Player_Socks") mat.color.set(shorts);
+      mesh.material = mat;
+      mesh.castShadow = true;
+    });
+    clonedRef.current = clone;
+  }
+  return clonedRef.current;
+}
+
 /** Animated goalkeeper — stands on line, dives when `diveTarget` is set. */
 function Keeper({
   color,
   diveTarget,
   diveMs,
+  reach: reach2d,
 }: {
   color: string;
   diveTarget: { x: number; y: number } | null;
   diveMs: number;
+  /** Keeper reach in goal half-widths — comes from the same tuning the 2D outcome uses. */
+  reach: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF(MODEL_PATH);
-  const clonedRef = useRef<THREE.Group | null>(null);
+  // Keepers wear a distinct kit, never the outfield colour.
+  const clonedScene = useKitClone(scene, "#e8f24a", "#1b1f24");
+  const clonedRef = { current: clonedScene };
+  void color;
 
-  if (!clonedRef.current) {
-    clonedRef.current = cloneSkeleton(scene) as THREE.Group;
-    clonedRef.current.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      mat.color.set(color);
-    });
-  }
 
   const { actions } = useAnimations(animations, groupRef);
   const diveRef = useRef<{ x: number; y: number } | null>(null);
@@ -239,7 +259,7 @@ function Keeper({
     const e = 1 - Math.pow(1 - t, 2.2);
     // Dive distance is capped at the keeper's reach from the 2D tuning, so a
     // dive can never cover ground the outcome maths says he can't reach.
-    const reach = FREEKICK_TUNING.keeperReach * (GOAL_W / 2) * 2;
+    const reach = reach2d * (GOAL_W / 2) * 2;
     const rawX = diveRef.current.x * (GOAL_W / 2) * 0.92;
     const tx = THREE.MathUtils.clamp(rawX, -reach, reach);
     const ty = Math.max(0, Math.min(diveRef.current.y * GOAL_H * 0.55, GOAL_H * 0.55));
@@ -261,42 +281,56 @@ function Keeper({
   );
 }
 
-/** Row of wall defenders — simple low-poly capsule shapes. */
+/** One wall defender — the same rigged footballer as the pitch players. */
+function WallMan({
+  x,
+  jersey,
+  shorts,
+  lift,
+}: {
+  x: number;
+  jersey: string;
+  shorts: string;
+  lift: number;
+}) {
+  const { scene } = useGLTF(MODEL_PATH);
+  const clone = useKitClone(scene, jersey, shorts);
+  return (
+    <group position={[x, lift, WALL_Z]} rotation={[0, Math.PI, 0]} scale={[0.92, 0.92, 0.92]}>
+      <primitive object={clone} />
+    </group>
+  );
+}
+
+/**
+ * Defensive wall, placed from exactly the numbers the 2D collision uses:
+ * `wallData.x` is the wall centre in goal half-widths and `halfWidth` its
+ * half-span, so a shot the maths calls "wall" visibly meets a body.
+ */
 function Wall({
   wallData,
-  side,
   color,
+  accent,
 }: {
-  wallData: { x: number; halfWidth: number } | null;
-  side: -1 | 1;
+  wallData: { x: number; halfWidth: number; height?: number } | null;
   color: string;
+  accent: string;
 }) {
   if (!wallData) return null;
-  const count = 4;
-  const spacing = 0.85;
-  const xs = Array.from({ length: count }, (_, i) =>
-    side * (Math.abs(wallData.x) * GOAL_W * 0.5) + (i - (count - 1) / 2) * spacing
+  const half = wallData.halfWidth * (GOAL_W / 2);
+  const centre = wallData.x * (GOAL_W / 2);
+  const count = Math.max(2, Math.round((half * 2) / 0.62));
+  const xs = Array.from(
+    { length: count },
+    (_, i) => centre - half + ((i + 0.5) / count) * half * 2,
   );
+  // Wall height above 1 means the jump clears more than the bar's worth of
+  // ground — lift the figures so the picture matches the block maths.
+  const lift = Math.max(0, ((wallData.height ?? 1) - 1) * 0.35);
   return (
     <>
       {xs.map((x, i) => (
-        <group key={i} position={[x, 0, WALL_Z]}>
-          {/* head */}
-          <mesh position={[0, 1.72, 0]}>
-            <sphereGeometry args={[0.14, 10, 8]} />
-            <meshStandardMaterial color="#c8a070" />
-          </mesh>
-          {/* body */}
-          <mesh position={[0, 1.1, 0]}>
-            <capsuleGeometry args={[0.24, 0.82, 6, 10]} />
-            <meshStandardMaterial color={color} />
-          </mesh>
-          {/* legs */}
-          <mesh position={[0, 0.26, 0]}>
-            <capsuleGeometry args={[0.2, 0.4, 4, 8]} />
-            <meshStandardMaterial color="#222" />
-          </mesh>
-        </group>
+        <WallMan key={i} x={x} jersey={color} shorts={accent} lift={lift} />
       ))}
     </>
   );
@@ -307,10 +341,15 @@ function Wall({
 export type SetPiece3DSceneProps = {
   /** Kit primary colour of the defending team (keeper + wall). */
   defenderColor: string;
-  /** Optional wall config — `{ x: -1..1, halfWidth: 0..1 }`. If null/undefined, no wall shown. */
-  wallData?: { x: number; halfWidth: number } | null | undefined;
-  /** Which side the wall leans (-1 = left, 1 = right). */
-  wallSide?: -1 | 1 | undefined;
+  /** Optional wall config — straight from `buildWall()` in the free-kick maths. */
+  wallData?: { x: number; halfWidth: number; height?: number } | null | undefined;
+  /** Kit accent colour for shorts/socks of the defending side. */
+  defenderAccent?: string | undefined;
+  /**
+   * Keeper reach in goal half-widths, from the same tuning that decides the
+   * outcome (PENALTY_TUNING / FREEKICK_TUNING scaled by difficulty).
+   */
+  keeperReach?: number | undefined;
   /** When non-null, triggers the keeper dive animation toward this normalised goal position. */
   keeperDiveTarget?: { x: number; y: number } | null | undefined;
   /** The kick in flight — drives the 3D ball path and keeper dive timing. */
@@ -330,7 +369,8 @@ export type SetPiece3DSceneProps = {
 export function SetPiece3DScene({
   defenderColor,
   wallData = null,
-  wallSide = -1,
+  defenderAccent = "#12181d",
+  keeperReach = FREEKICK_TUNING.keeperReach,
   keeperDiveTarget = null,
   kick = null,
   showBall = false,
@@ -372,13 +412,14 @@ export function SetPiece3DScene({
         <GoalNet />
 
         {/* Wall (free kicks only) */}
-        <Wall wallData={wallData} side={wallSide} color={defenderColor} />
+        <Wall wallData={wallData} color={defenderColor} accent={defenderAccent} />
 
         {/* Goalkeeper */}
         <Keeper
           color={defenderColor}
           diveTarget={keeperDiveTarget ?? null}
           diveMs={kick?.flightMs ?? 500}
+          reach={keeperReach}
         />
 
         {/* Ball in flight (opt-in — the 2D overlay ball is the default) */}
