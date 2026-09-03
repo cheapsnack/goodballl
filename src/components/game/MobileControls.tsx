@@ -26,10 +26,17 @@ type Props = {
  * frame via `useTouchInput().getInput()`.
  */
 export function MobileControls({ stateRef, compact }: Props) {
+  const [isTouch, setIsTouch] = useState(false);
   const [joyCentre, setJoyCentre] = useState<{ x: number; y: number } | null>(null);
   const [joyKnob, setJoyKnob] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [held, setHeld] = useState<Set<string>>(new Set());
   const joystickId = useRef<number | null>(null);
+
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const touchPoints = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    setIsTouch(coarse && touchPoints);
+  }, []);
 
   const BTN_SIZE = compact ? 52 : 62;
   const JOY_RADIUS = compact ? 52 : 62;
@@ -113,6 +120,10 @@ export function MobileControls({ stateRef, compact }: Props) {
   const CX = BTN_SIZE / 2;
   const SPREAD = BTN_SIZE + (compact ? 6 : 8);
 
+  // Only show on real touch devices — a narrow desktop window is still a
+  // desktop, so screen width alone is the wrong test.
+  if (!isTouch) return null;
+
   return (
     <div
       style={{
@@ -123,12 +134,6 @@ export function MobileControls({ stateRef, compact }: Props) {
         touchAction: "none",
       }}
     >
-      {/* Hide on screens wider than 1024px (desktop) — show only on touch devices */}
-      <style>{`
-        @media (min-width: 1024px) and (hover: hover) {
-          .mobile-controls-root { display: none !important; }
-        }
-      `}</style>
       <div className="mobile-controls-root" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
       {/* ── LEFT: Virtual joystick ── */}
       <div
