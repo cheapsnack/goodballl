@@ -8,7 +8,7 @@ import { useGameStore } from "../../game/store/useGameStore";
 import { createRoom, joinRoom } from "../../multiplayer/roomClient";
 import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 
-type Mode = "ai" | "local2p" | "friend" | "penalties";
+type Mode = "ai" | "local2p" | "friend" | "penalties" | "freekicks";
 type FriendStep = "choose" | "create-waiting" | "join-form" | "connecting";
 const DIFFICULTIES: Difficulty[] = ["beginner", "amateur", "advanced", "expert"];
 const MENTALITIES: Mentality[] = ["defensive", "balanced", "attacking"];
@@ -18,7 +18,11 @@ const MENTALITIES: Mentality[] = ["defensive", "balanced", "attacking"];
  * no WebGL context is created) until the player commits — this also gives us
  * the user gesture WebAudio needs before it will make a sound.
  */
-export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penalties") => void }) {
+export function MainMenu({
+  onKickoff,
+}: {
+  onKickoff: (kind?: "match" | "penalties" | "freekicks") => void;
+}) {
   const [sound, setSound] = useState(isAudioEnabled());
   const [homeId, setHomeId] = useState(DEFAULT_HOME_CLUB_ID);
   const [awayId, setAwayId] = useState(DEFAULT_AWAY_CLUB_ID);
@@ -95,6 +99,15 @@ export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penaltie
     onKickoff("penalties");
   };
 
+  /** Standalone free-kick practice — aim, bend and power against a wall. */
+  const startFreeKicks = () => {
+    if (sound) initAudio();
+    setAudioEnabled(sound);
+    setClubs(homeId, awayId === homeId ? DEFAULT_AWAY_CLUB_ID : awayId);
+    setNetRoom("local", null, null);
+    onKickoff("freekicks");
+  };
+
   const startCreateRoom = async () => {
     setError(null);
     setFriendStep("connecting");
@@ -144,7 +157,15 @@ export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penaltie
       />
       <div className="relative w-full max-w-md px-8 py-10 text-center">
         <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
-          {mode === "ai" ? "Kickoff Mode" : mode === "local2p" ? "Local 1v1" : "Play vs Friend"}
+          {mode === "ai"
+            ? "Kickoff Mode"
+            : mode === "local2p"
+              ? "Local 1v1"
+              : mode === "penalties"
+                ? "Penalty Shootout"
+                : mode === "freekicks"
+                  ? "Free Kick Practice"
+                  : "Play vs Friend"}
         </div>
         <h1 className="mt-3 font-sans text-6xl font-black uppercase leading-none tracking-tight text-background">
           Arcade
@@ -167,6 +188,9 @@ export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penaltie
           </ModeTab>
           <ModeTab active={mode === "penalties"} onClick={() => { setMode("penalties"); cancelFriendFlow(); }}>
             Penalties
+          </ModeTab>
+          <ModeTab active={mode === "freekicks"} onClick={() => { setMode("freekicks"); cancelFriendFlow(); }}>
+            Free Kicks
           </ModeTab>
         </div>
 
@@ -219,6 +243,24 @@ export function MainMenu({ onKickoff }: { onKickoff: (kind?: "match" | "penaltie
               className="mt-6 w-full rounded-md bg-[#63d68a] px-6 py-4 font-sans text-lg font-black uppercase tracking-[0.2em] text-[#0d1a12] transition-transform hover:scale-[1.02] active:scale-[0.99]"
             >
               Kick Off
+            </button>
+          </>
+        )}
+
+        {mode === "freekicks" && (
+          <>
+            <ClubPicker label="Your Club" selectedId={homeId} onSelect={setHomeId} />
+            <ClubPicker label="Opponent" selectedId={awayId} onSelect={setAwayId} />
+            <DifficultyPicker selected={difficulty} onSelect={setDifficulty} />
+            <div className="mt-6 rounded-md bg-background/5 px-4 py-3 text-left text-xs leading-relaxed text-background/60">
+              <span className="font-bold text-background/80">Five kicks against a wall.</span> Aim
+              with the arrows or WASD, bend the ball with Z / X, hold Space for power.
+            </div>
+            <button
+              onClick={startFreeKicks}
+              className="mt-6 w-full rounded-md bg-[#63d68a] px-6 py-4 font-sans text-lg font-black uppercase tracking-[0.2em] text-[#0d1a12] transition-transform hover:scale-[1.02] active:scale-[0.99]"
+            >
+              Take Free Kicks
             </button>
           </>
         )}

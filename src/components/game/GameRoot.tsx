@@ -2,10 +2,11 @@ import { useState } from "react";
 import { GameCanvas } from "./GameCanvas";
 import { MainMenu } from "./MainMenu";
 import { PenaltyShootout } from "./PenaltyShootout";
+import { FreeKick } from "./FreeKick";
 import { useGameStore } from "../../game/store/useGameStore";
 import { endRoom } from "../../multiplayer/roomClient";
 
-type Screen = "menu" | "match" | "penalties";
+type Screen = "menu" | "match" | "penalties" | "freekicks";
 
 /** Gates the match behind the menu so the Canvas mounts only on kickoff. */
 export function GameRoot() {
@@ -18,7 +19,9 @@ export function GameRoot() {
     return (
       <MainMenu
         onKickoff={(kind = "match") => {
-          if (kind === "penalties") {
+          if (kind === "freekicks") {
+            setScreen("freekicks");
+          } else if (kind === "penalties") {
             startShootout();
             setScreen("penalties");
           } else {
@@ -28,6 +31,10 @@ export function GameRoot() {
         }}
       />
     );
+  }
+
+  if (screen === "freekicks") {
+    return <FreeKick onExit={() => setScreen("menu")} />;
   }
 
   if (screen === "penalties") {
