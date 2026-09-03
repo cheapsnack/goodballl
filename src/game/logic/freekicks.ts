@@ -58,36 +58,37 @@ export const FREEKICK_LEVEL_TUNING: Record<
   }
 > = {
   easy: {
-    keeperAccuracy: 0.1,
-    keeperReachScale: 0.78,
-    wallHeight: 0.3,
-    powerTime: 1.5,
-    aimSpeed: { x: 0.6, y: 0.45 },
-    curveSpeed: 0.8,
+    keeperAccuracy: 0.08,
+    keeperReachScale: 0.75,
+    wallHeight: 0.34,
+    powerTime: 1.7,
+    aimSpeed: { x: 0.55, y: 0.42 },
+    curveSpeed: 0.85,
     label: "Easy",
     blurb: "Short wall · keeper guesses blind · slow power",
   },
   normal: {
-    keeperAccuracy: 0.3,
+    keeperAccuracy: 0.26,
     keeperReachScale: 1,
-    wallHeight: 0.4,
-    powerTime: 1.1,
-    aimSpeed: { x: 0.8, y: 0.6 },
+    wallHeight: 0.45,
+    powerTime: 1.25,
+    aimSpeed: { x: 0.75, y: 0.58 },
     curveSpeed: 1,
     label: "Normal",
     blurb: "Balanced wall, dive and power window",
   },
   hard: {
-    keeperAccuracy: 0.55,
-    keeperReachScale: 1.2,
-    wallHeight: 0.5,
-    powerTime: 0.7,
-    aimSpeed: { x: 1.05, y: 0.8 },
-    curveSpeed: 1.3,
+    keeperAccuracy: 0.5,
+    keeperReachScale: 1.18,
+    wallHeight: 0.56,
+    powerTime: 0.85,
+    aimSpeed: { x: 1, y: 0.75 },
+    curveSpeed: 1.25,
     label: "Hard",
     blurb: "Tall wall · keeper reads you · snappy power",
   },
 };
+
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
