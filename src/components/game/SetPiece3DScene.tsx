@@ -369,7 +369,8 @@ export type SetPiece3DSceneProps = {
 export function SetPiece3DScene({
   defenderColor,
   wallData = null,
-  wallSide = -1,
+  defenderAccent = "#12181d",
+  keeperReach = FREEKICK_TUNING.keeperReach,
   keeperDiveTarget = null,
   kick = null,
   showBall = false,
