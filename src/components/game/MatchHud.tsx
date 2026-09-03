@@ -22,6 +22,16 @@ export function MatchHud({ onExit }: { onExit?: (() => void) | undefined }) {
 
   return (
     <>
+      {/* Always-available way out of a match, back to the main menu. */}
+      {onExit && status !== "fulltime" && (
+        <button
+          onClick={onExit}
+          className="fixed right-4 top-5 z-20 rounded-md bg-foreground/80 px-4 py-2 font-sans text-[10px] font-black uppercase tracking-[0.22em] text-background/80 shadow-lg backdrop-blur-sm transition-colors hover:text-background"
+        >
+          End game
+        </button>
+      )}
+
       {/* Broadcast score bug */}
       <div className="pointer-events-none fixed left-1/2 top-5 z-10 -translate-x-1/2">
         <div className="flex items-stretch overflow-hidden rounded-md bg-foreground/80 font-sans text-background shadow-lg backdrop-blur-sm">
