@@ -493,16 +493,26 @@ export function MatchScene() {
           // Throw-in / corner: bring the taking side's controlled player to
           // the spot and hand them the ball directly, so whoever's playing
           // can act immediately instead of having to run over and win it.
+          //
+          // Crucially the taker must FACE INTO the pitch: the ball is glued
+          // just ahead of a possessor's heading, so facing the corner flag
+          // (or the touchline) shoved the ball straight back over the line
+          // and restarted the same corner/throw over and over.
+          const aimAt = type === "corner" ? { x: spot.x * 0.72, z: 0 } : { x: 0, z: 0 };
+          const dx = aimAt.x - spot.x;
+          const dz = aimAt.z - spot.z;
+          const len = Math.hypot(dx, dz) || 1;
           const setback = type === "corner" ? 1.4 : 1;
-          const towardCentre = { x: spot.x > 0 ? -1 : 1, z: spot.z > 0 ? -1 : 1 };
+          // Stand *behind* the ball relative to the aim direction, so the
+          // glued ball ends up between the taker and the pitch.
           const takerPos = {
-            x: clamp(spot.x + towardCentre.x * setback, -PITCH.halfLength + 1, PITCH.halfLength - 1),
-            z: clamp(spot.z + towardCentre.z * setback, -PITCH.halfWidth + 1, PITCH.halfWidth - 1),
+            x: clamp(spot.x - (dx / len) * setback, -PITCH.halfLength + 1, PITCH.halfLength - 1),
+            z: clamp(spot.z - (dz / len) * setback, -PITCH.halfWidth + 1, PITCH.halfWidth - 1),
           };
           const takerBody: Kinematics = {
             position: { x: takerPos.x, y: 0, z: takerPos.z },
             velocity: { x: 0, y: 0, z: 0 },
-            heading: headingTo(takerPos, spot),
+            heading: headingTo(takerPos, aimAt),
           };
           if (team === "home") {
             nextHomeOutfield = nextHomeOutfield.map((p, i) =>
