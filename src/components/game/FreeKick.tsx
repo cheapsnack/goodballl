@@ -452,12 +452,39 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
       </div>
 
       {/* Power meter */}
-      <div className="mt-3 h-3 w-full max-w-2xl overflow-hidden rounded-full bg-background/15">
-        <div
-          className="h-full rounded-full bg-[#63d68a] transition-[width] duration-75"
-          style={{ width: `${power * 100}%` }}
-        />
+      <div className="mt-3 w-full max-w-2xl">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-background/45">
+          <span>Power — hold Space (or the button)</span>
+          <span className="tabular-nums text-background/70">{Math.round(power * 100)}%</span>
+        </div>
+        <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-background/15">
+          <div
+            className="h-full rounded-full bg-[#63d68a]"
+            style={{ width: `${power * 100}%` }}
+          />
+        </div>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            held.current.add("Space");
+          }}
+          onPointerUp={() => {
+            held.current.delete("Space");
+            release();
+          }}
+          onPointerLeave={() => {
+            if (held.current.has("Space")) {
+              held.current.delete("Space");
+              release();
+            }
+          }}
+          className="pointer-events-auto mt-2 w-full select-none rounded-md border border-background/25 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-background/60 transition-colors hover:bg-background/10"
+        >
+          Hold to charge
+        </button>
       </div>
+
 
       {set.done ? (
         <div className="mt-5 text-center">
