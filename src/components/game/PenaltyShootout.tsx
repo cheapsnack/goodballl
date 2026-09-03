@@ -153,7 +153,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         if (next.winner) playWhistle();
       });
     },
-    [keeperAccuracy, setShootout],
+    [keeperAccuracy, level.keeperReachScale, setShootout],
   );
 
   // --- human input: arrows/WASD aim, Space charges and releases ---
