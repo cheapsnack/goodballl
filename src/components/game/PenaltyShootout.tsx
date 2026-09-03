@@ -167,6 +167,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         setOutcome(null);
         setAim({ x: 0, y: 0.45 });
         setBall(ballAtSpot());
+        setKick3d(null);
+
         setKeeper({ x: 50, y: GOAL_FLOOR, tilt: 0 });
         busy.current = false;
         if (next.winner) playWhistle();
