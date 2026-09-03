@@ -138,6 +138,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
    * kicked it, since they're still standing right where it started.
    */
   const recentRelease = useRef<{ team: TeamSide; index: number; until: number } | null>(null);
+  /** Set while a goalkeeper has the ball in their hands, until they distribute it. */
+  const keeperHold = useRef<{ team: TeamSide; until: number } | null>(null);
   /** Host-side: the latest input the guest has sent (updated async, off the frame loop). */
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
