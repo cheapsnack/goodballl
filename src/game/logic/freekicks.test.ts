@@ -10,15 +10,15 @@ import {
   resolveFreeKick,
 } from "./freekicks";
 
-const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.70
+const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 1.40
 
 describe("hitsWall", () => {
   it("blocks a low straight ball hit at the wall", () => {
     expect(hitsWall({ x: -0.34, y: 0.2 }, 0, wall)).toBe(true);
   });
 
-  it("lets a ball over the wall through", () => {
-    expect(hitsWall({ x: -0.34, y: 1.0 }, 0, wall)).toBe(false);
+  it("blocks a high straight ball because the wall now reaches the crossbar", () => {
+    expect(hitsWall({ x: -0.34, y: 1.0 }, 0, wall)).toBe(true);
   });
 
   it("lets a heavily bent ball curl around the wall", () => {
