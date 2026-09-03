@@ -196,7 +196,7 @@ function Keeper({
   color,
   diveTarget,
   diveMs,
-  reach,
+  reach: reach2d,
 }: {
   color: string;
   diveTarget: { x: number; y: number } | null;
