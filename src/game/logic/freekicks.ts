@@ -24,19 +24,20 @@ export const FREEKICK_TUNING = {
   /** attempts in one practice set */
   attempts: 5,
   /** keeper reach from where he guessed, in goal half-widths */
-  keeperReach: 0.42,
+  keeperReach: 0.44,
   /** how much of the keeper's reach a full-power strike takes away */
-  powerPenalty: 0.45,
+  powerPenalty: 0.5,
   /** how much full bend takes away from the keeper's reach (he's deceived) */
-  curveDeception: 0.3,
+  curveDeception: 0.35,
   /** aiming beyond this on either axis puts the ball off target */
   missThreshold: 0.97,
   /**
-   * Bend, in goal half-widths, that a full curve input adds to the ball's
-   * flight around the wall. Below this the ball is still "through" the wall
-   * line rather than around it.
+   * Bend, in goal half-widths, that a full curve input shifts the ball's path
+   * at the wall line. Partial curve shifts it proportionally.
    */
-  bendAroundWall: 0.45,
+  bendAroundWall: 0.55,
+  /** fraction of the final aim height the ball has reached at the wall line */
+  riseAtWall: 0.72,
 } as const;
 
 export type FreeKickLevel = "easy" | "normal" | "hard";
@@ -57,54 +58,59 @@ export const FREEKICK_LEVEL_TUNING: Record<
   }
 > = {
   easy: {
-    keeperAccuracy: 0.1,
-    keeperReachScale: 0.78,
-    wallHeight: 0.3,
-    powerTime: 1.5,
-    aimSpeed: { x: 0.6, y: 0.45 },
-    curveSpeed: 0.8,
+    keeperAccuracy: 0.08,
+    keeperReachScale: 0.75,
+    wallHeight: 0.34,
+    powerTime: 1.7,
+    aimSpeed: { x: 0.55, y: 0.42 },
+    curveSpeed: 0.85,
     label: "Easy",
     blurb: "Short wall · keeper guesses blind · slow power",
   },
   normal: {
-    keeperAccuracy: 0.3,
+    keeperAccuracy: 0.26,
     keeperReachScale: 1,
-    wallHeight: 0.4,
-    powerTime: 1.1,
-    aimSpeed: { x: 0.8, y: 0.6 },
+    wallHeight: 0.45,
+    powerTime: 1.25,
+    aimSpeed: { x: 0.75, y: 0.58 },
     curveSpeed: 1,
     label: "Normal",
     blurb: "Balanced wall, dive and power window",
   },
   hard: {
-    keeperAccuracy: 0.55,
-    keeperReachScale: 1.2,
-    wallHeight: 0.5,
-    powerTime: 0.7,
-    aimSpeed: { x: 1.05, y: 0.8 },
-    curveSpeed: 1.3,
+    keeperAccuracy: 0.5,
+    keeperReachScale: 1.18,
+    wallHeight: 0.56,
+    powerTime: 0.85,
+    aimSpeed: { x: 1, y: 0.75 },
+    curveSpeed: 1.25,
     label: "Hard",
     blurb: "Tall wall · keeper reads you · snappy power",
   },
 };
+
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /** A wall placed to cover the near-post side of the taker's position. */
 export function buildWall(side: -1 | 1, level: FreeKickLevel): Wall {
   const t = FREEKICK_LEVEL_TUNING[level];
-  return { x: side * 0.34, halfWidth: 0.3, height: t.wallHeight };
+  return { x: side * 0.34, halfWidth: 0.32, height: t.wallHeight };
 }
 
 /**
- * Whether the strike is blocked. A ball bent hard enough travels around the
- * wall; a flat low ball straight at it does not.
+ * Whether the strike is blocked. The ball crosses the wall line before it has
+ * fully risen or fully bent, so a partial curve only shifts the crossing point
+ * proportionally: only a real bend (or a shot over/around) beats the wall.
  */
 export function hitsWall(aim: PenaltyAim, curve: number, wall: Wall): boolean {
-  if (Math.abs(curve) >= FREEKICK_TUNING.bendAroundWall) return false;
-  if (aim.y > wall.height) return false;
-  return Math.abs(aim.x - wall.x) <= wall.halfWidth;
+  const c = clamp(curve, -1, 1);
+  const crossX = aim.x - c * FREEKICK_TUNING.bendAroundWall;
+  const crossY = aim.y * FREEKICK_TUNING.riseAtWall;
+  if (crossY > wall.height) return false;
+  return Math.abs(crossX - wall.x) <= wall.halfWidth;
 }
+
 
 /** Where the keeper dives: biased toward the aim by `accuracy` (0…1). */
 export function keeperGuessFK(
