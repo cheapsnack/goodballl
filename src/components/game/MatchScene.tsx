@@ -20,7 +20,7 @@ import {
   type CameraFrame,
   type CameraMode,
 } from "../../game/logic/camera";
-import { stepGoalkeeper, tryKeeperSave } from "../../game/logic/ai/goalkeeper";
+import { stepGoalkeeper, tryKeeperClaim, KEEPER_HANDS } from "../../game/logic/ai/goalkeeper";
 import {
   buildOutfield,
   presserIndices,
