@@ -1151,7 +1151,9 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           spin: ball.spin,
         };
       }
+      }
     }
+
 
     // --- goal detection, dead-ball restarts & period end ---
     const goal = detectGoal(store.ball, ball);
