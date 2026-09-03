@@ -302,11 +302,17 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)",
         }}
       >
-        {/* 3D player run-up scene — rendered behind the 2D goal overlay */}
+        {/* 3D POV scene — goal with animated keeper */}
         <SetPiece3DScene
-          primaryColor={homeClub.primaryColor}
-          accentColor={homeClub.secondaryColor ?? "#ffffff"}
-          trigger={kickTrigger}
+          defenderColor={awayClub.primaryColor}
+          keeperDiveTarget={
+            keeper.tilt !== 0 || keeper.x !== 50
+              ? {
+                  x: (keeper.x - 50) / 36,
+                  y: Math.max(0, (keeper.y - GOAL_FLOOR) / (GOAL.height - 8)),
+                }
+              : null
+          }
         />
 
         {/* Mown stripes */}
@@ -400,12 +406,21 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         )}
       </div>
 
-      {/* Power meter */}
-      <div className="mt-4 h-3 w-full max-w-2xl overflow-hidden rounded-full bg-background/15">
-        <div
-          className="h-full rounded-full bg-[#63d68a] transition-[width] duration-75"
-          style={{ width: `${power * 100}%` }}
-        />
+      {/* Power meter — prominent, always visible before and during a kick */}
+      <div className="mt-4 w-full max-w-2xl">
+        <div className="mb-1 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-background/50">
+          <span>Power — hold Space / button</span>
+          <span className="tabular-nums text-background/80">{Math.round(power * 100)}%</span>
+        </div>
+        <div className="relative h-4 w-full overflow-hidden rounded-full bg-background/15">
+          <div
+            className="h-full rounded-full transition-[width] duration-75"
+            style={{
+              width: `${power * 100}%`,
+              background: power < 0.5 ? "#63d68a" : power < 0.8 ? "#f5c518" : "#e83a3a",
+            }}
+          />
+        </div>
       </div>
 
       {shootout.winner ? (

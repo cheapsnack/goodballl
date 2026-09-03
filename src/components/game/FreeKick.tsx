@@ -329,9 +329,17 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
       >
         {/* 3D player run-up */}
         <SetPiece3DScene
-          primaryColor={homeClub.primaryColor}
-          accentColor={homeClub.secondaryColor ?? "#ffffff"}
-          trigger={kickTrigger}
+          defenderColor={awayClub.primaryColor}
+          wallData={wall}
+          wallSide={wallSide}
+          keeperDiveTarget={
+            keeper.tilt !== 0 || keeper.x !== 50
+              ? {
+                  x: (keeper.x - 50) / 34,
+                  y: Math.max(0, (keeper.y - GOAL_FLOOR) / (GOAL.height - 8)),
+                }
+              : null
+          }
         />
 
         <div
@@ -413,12 +421,48 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           style={{ left: `${SPOT.x}%`, bottom: `${SPOT.y}%` }}
         />
 
-        {/* Aim reticle */}
+        {/* Aim reticle — draggable; click/touch anywhere in the goal to move it */}
         {canKick && !outcome && !busy.current && (
           <div
-            className="pointer-events-none absolute h-8 w-8 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-dashed border-[#63d68a]"
-            style={{ left: `${reticle.x}%`, bottom: `${reticle.y}%` }}
-          />
+            className="absolute inset-0 cursor-crosshair"
+            style={{ pointerEvents: "auto", touchAction: "none", zIndex: 5 }}
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pxX = ((e.clientX - rect.left) / rect.width) * 100;
+              const pxY = ((rect.bottom - e.clientY) / rect.height) * 100; // bottom=0
+              const ax = Math.max(-1, Math.min(1,
+                (pxX - 50) / ((GOAL.right - GOAL.left) / 2 * 0.92)
+              ));
+              const ay = Math.max(0, Math.min(1,
+                (pxY - GOAL_FLOOR) / (GOAL.height - 8)
+              ));
+              setAim({ x: ax, y: ay });
+            }}
+            onPointerMove={(e) => {
+              if (e.buttons === 0) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const pxX = ((e.clientX - rect.left) / rect.width) * 100;
+              const pxY = ((rect.bottom - e.clientY) / rect.height) * 100;
+              const ax = Math.max(-1, Math.min(1,
+                (pxX - 50) / ((GOAL.right - GOAL.left) / 2 * 0.92)
+              ));
+              const ay = Math.max(0, Math.min(1,
+                (pxY - GOAL_FLOOR) / (GOAL.height - 8)
+              ));
+              setAim({ x: ax, y: ay });
+            }}
+          >
+            {/* Reticle dot — rendered inside the capture zone */}
+            <div
+              className="pointer-events-none absolute h-8 w-8 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-dashed border-[#63d68a]"
+              style={{
+                left: `${reticle.x}%`,
+                bottom: `${reticle.y}%`,
+                boxShadow: "0 0 8px rgba(99,214,138,0.5)",
+              }}
+            />
+          </div>
         )}
 
         {/* Ball — bend shows as a lateral skew during flight */}
@@ -446,17 +490,50 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         )}
       </div>
 
-      {/* Curve dial */}
+      {/* Curve dial — drag the knob or click anywhere on the track */}
       <div className="mt-4 w-full max-w-2xl">
         <div className="flex justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-background/40">
-          <span>Bend left (Z)</span>
-          <span>Bend right (X)</span>
+          <span>← Bend left</span>
+          <span>Bend right →</span>
         </div>
-        <div className="relative mt-1 h-2 rounded-full bg-background/15">
-          <div className="absolute left-1/2 top-0 h-full w-px bg-background/40" />
+        <div
+          className="relative mt-1 h-8 cursor-pointer rounded-full"
+          style={{ touchAction: "none" }}
+          onPointerDown={(e) => {
+            if (busy.current) return;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            const rect = e.currentTarget.getBoundingClientRect();
+            const raw = (e.clientX - rect.left) / rect.width; // 0..1
+            setCurve(Math.max(-1, Math.min(1, (raw - 0.5) * 2)));
+          }}
+          onPointerMove={(e) => {
+            if (busy.current || e.buttons === 0) return;
+            const rect = e.currentTarget.getBoundingClientRect();
+            const raw = (e.clientX - rect.left) / rect.width;
+            setCurve(Math.max(-1, Math.min(1, (raw - 0.5) * 2)));
+          }}
+        >
+          {/* Track */}
+          <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 rounded-full bg-background/15">
+            <div className="absolute left-1/2 top-0 h-full w-px bg-background/40" />
+            {/* Filled portion showing how much bend */}
+            {curve !== 0 && (
+              <div
+                className="absolute top-0 h-full rounded-full bg-[#8fd8ff]/40"
+                style={curve > 0
+                  ? { left: "50%", width: `${curve * 50}%` }
+                  : { left: `${50 + curve * 50}%`, width: `${-curve * 50}%` }
+                }
+              />
+            )}
+          </div>
+          {/* Knob */}
           <div
-            className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8fd8ff]"
-            style={{ left: `${50 + curve * 50}%` }}
+            className="pointer-events-none absolute top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#8fd8ff] shadow-lg"
+            style={{
+              left: `${50 + curve * 50}%`,
+              boxShadow: "0 0 10px rgba(143,216,255,0.6)",
+            }}
           />
         </div>
       </div>
