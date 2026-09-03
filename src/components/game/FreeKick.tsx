@@ -234,8 +234,6 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
 
   const goals = freeKickScore(set.results);
   const reticle = toScene(aim);
-  const wallLeft = toScene({ x: wall.x - wall.halfWidth, y: 0 }).x;
-  const wallRight = toScene({ x: wall.x + wall.halfWidth, y: 0 }).x;
 
   const restart = () => {
     setSet(initFreeKickSet());
@@ -342,83 +340,14 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           }
         />
 
+        {/* Mown stripes overlay */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-20"
+          className="pointer-events-none absolute inset-0 opacity-10"
           style={{
             backgroundImage:
               "repeating-linear-gradient(0deg, rgba(255,255,255,0.16) 0 14px, transparent 14px 28px)",
+            zIndex: 1,
           }}
-        />
-
-        {/* Goal frame + net */}
-        <div
-          className="absolute rounded-t-sm border-[6px] border-b-0 border-background/90"
-          style={{
-            left: `${GOAL.left}%`,
-            right: `${100 - GOAL.right}%`,
-            top: `${GOAL.top}%`,
-            height: `${GOAL.height}%`,
-            background: "rgba(9,20,14,0.55)",
-            transform: netShake ? "scale(1.012)" : "scale(1)",
-            transition: "transform 120ms ease-out",
-          }}
-        >
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)",
-              backgroundSize: "16px 16px",
-            }}
-          />
-        </div>
-
-        {/* Keeper */}
-        <div
-          className="absolute -translate-x-1/2"
-          style={{
-            left: `${keeper.x}%`,
-            bottom: `${keeper.y}%`,
-            transform: `translateX(-50%) rotate(${keeper.tilt}deg)`,
-            transition:
-              "left 240ms cubic-bezier(.2,.7,.3,1), bottom 240ms cubic-bezier(.2,.7,.3,1), transform 240ms ease-out",
-          }}
-        >
-          <div className="h-4 w-4 rounded-full bg-[#f7c948] shadow" />
-          <div className="mx-auto h-10 w-7 rounded-sm bg-[#f7c948] shadow-lg" />
-          <div className="mx-auto h-4 w-5 rounded-b-sm bg-[#1f2a24]" />
-        </div>
-
-        {/* Defensive wall */}
-        <div
-          className="absolute flex items-end gap-1"
-          style={{
-            left: `${wallLeft}%`,
-            width: `${wallRight - wallLeft}%`,
-            bottom: `${WALL_Y}%`,
-          }}
-        >
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex-1">
-              <div
-                className="mx-auto h-3 w-3 rounded-full"
-                style={{ backgroundColor: awayClub.secondaryColor ?? "#e8e8e8" }}
-              />
-              <div
-                className="mx-auto w-full rounded-sm shadow-lg"
-                style={{
-                  height: `${18 + level.wallHeight * 26}px`,
-                  backgroundColor: awayClub.primaryColor,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Spot */}
-        <div
-          className="pointer-events-none absolute h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-background/60"
-          style={{ left: `${SPOT.x}%`, bottom: `${SPOT.y}%` }}
         />
 
         {/* Aim reticle — draggable; click/touch anywhere in the goal to move it */}
@@ -472,6 +401,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
             left: `${ball.x}%`,
             bottom: `${ball.y}%`,
             transform: `translate(-50%, 50%) scale(${ball.scale})`,
+            zIndex: 2,
             transition: ball.ms
               ? `left ${ball.ms}ms cubic-bezier(${ball.curve > 0 ? ".8,.05,.4,1" : ball.curve < 0 ? ".2,.9,.6,1" : ".3,.1,.5,1"}), bottom ${ball.ms}ms cubic-bezier(.3,.1,.5,1), transform ${ball.ms}ms linear`
               : "none",
@@ -479,7 +409,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         />
 
         {outcome && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" style={{ zIndex: 3 }}>
             <span
               className="rounded-md bg-[#0d1a12]/85 px-6 py-2 font-sans text-3xl font-black tracking-[0.1em]"
               style={{ color: outcome === "goal" ? "#63d68a" : "#ff7a6a" }}
