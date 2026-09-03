@@ -4,6 +4,7 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
+import { SetPiece3DScene } from "./SetPiece3DScene";
 import {
   applyPenalty,
   keeperGuess,
@@ -75,6 +76,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const [outcome, setOutcome] = useState<PenaltyOutcome | null>(null);
   const [netShake, setNetShake] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  /** Flipped to trigger the 3D run-up animation each kick. */
+  const [kickTrigger, setKickTrigger] = useState(false);
 
   const held = useRef<Set<string>>(new Set());
   const aimRef = useRef(aim);
@@ -105,6 +108,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
     (kickAim: PenaltyAim, kickPower: number) => {
       if (busy.current) return;
       busy.current = true;
+      // Fire the 3D run-up animation — alternates true/false so it re-triggers.
+      setKickTrigger((t) => !t);
       const guess = keeperGuess(kickAim, keeperAccuracy);
       const shot = resolvePenalty(kickAim, kickPower, guess, level.keeperReachScale);
       const p = Math.max(0, Math.min(1, kickPower));
@@ -297,6 +302,13 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)",
         }}
       >
+        {/* 3D player run-up scene — rendered behind the 2D goal overlay */}
+        <SetPiece3DScene
+          primaryColor={homeClub.primaryColor}
+          accentColor={homeClub.secondaryColor ?? "#ffffff"}
+          trigger={kickTrigger}
+        />
+
         {/* Mown stripes */}
         <div
           className="pointer-events-none absolute inset-0 opacity-20"

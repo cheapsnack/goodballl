@@ -4,6 +4,7 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
+import { SetPiece3DScene } from "./SetPiece3DScene";
 import type { PenaltyAim } from "../../game/logic/penalties";
 import {
   applyFreeKick,
@@ -67,6 +68,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
   const [ball, setBall] = useState<BallPose>(ballAtSpot);
   const [keeper, setKeeper] = useState({ x: 50, y: GOAL_FLOOR, tilt: 0 });
   const [outcome, setOutcome] = useState<FreeKickOutcome | null>(null);
+  const [kickTrigger, setKickTrigger] = useState(false);
   const [netShake, setNetShake] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
@@ -96,6 +98,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
     (kickAim: PenaltyAim, kickCurve: number, kickPower: number) => {
       if (busy.current) return;
       busy.current = true;
+      setKickTrigger((t) => !t);
       const guess = keeperGuessFK(kickAim, keeperAccuracy);
       const shot = resolveFreeKick(kickAim, kickPower, kickCurve, guess, wall, level.keeperReachScale);
       const p = Math.max(0, Math.min(1, kickPower));
@@ -324,6 +327,13 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         className="relative mt-5 h-64 w-full max-w-2xl overflow-hidden rounded-lg border border-background/10"
         style={{ background: "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)" }}
       >
+        {/* 3D player run-up */}
+        <SetPiece3DScene
+          primaryColor={homeClub.primaryColor}
+          accentColor={homeClub.secondaryColor ?? "#ffffff"}
+          trigger={kickTrigger}
+        />
+
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
