@@ -336,6 +336,90 @@ function Wall({
   );
 }
 
+// ─── camera fitting ───────────────────────────────────────────────────────────
+
+/** Where the goal lands on screen, in % of the scene box (bottom-origin y). */
+export type GoalRect = { left: number; right: number; floor: number; bar: number };
+
+/** Fallback used by the 2D overlays before the 3D scene reports its framing. */
+export const DEFAULT_GOAL_RECT: GoalRect = { left: 14, right: 86, floor: 30, bar: 78 };
+
+/** How wide the goal should be, as a share of the scene box, and its floor line. */
+const FIT_WIDTH = 78;
+const FIT_FLOOR = 26;
+const MAX_BAR = 90;
+
+/**
+ * Frames the goal so it fills the box at any aspect ratio, then reports exactly
+ * where the posts, floor and crossbar landed. The 2D overlays (reticle, ball,
+ * keeper) place themselves from that rect, so the flat and the 3D layers agree
+ * whatever the screen size — which is what used to drift on phones.
+ */
+function FitGoal({ onRect }: { onRect?: ((r: GoalRect) => void) | undefined }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const size = useThree((s) => s.size);
+
+  useEffect(() => {
+    const project = (x: number, y: number) => {
+      const v = new THREE.Vector3(x, y, 0).project(camera);
+      return { x: (v.x * 0.5 + 0.5) * 100, y: (v.y * 0.5 + 0.5) * 100 };
+    };
+    const measure = (fov: number, lookY: number): GoalRect => {
+      camera.fov = fov;
+      camera.aspect = size.width / Math.max(1, size.height);
+      camera.position.set(0, CAM_Y, CAM_Z);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, lookY, 0);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      const l = project(-GOAL_W / 2, 0);
+      const r = project(GOAL_W / 2, 0);
+      const t = project(0, GOAL_H);
+      return { left: l.x, right: r.x, floor: l.y, bar: t.y };
+    };
+
+    /** Widest fov that makes the goal `target`% wide, with the floor on its line. */
+    const solve = (targetWidth: number) => {
+      let fov = 40;
+      let lookY = 0;
+      for (let pass = 0; pass < 3; pass++) {
+        // fov: narrower fov -> wider goal, so bisect on a decreasing function.
+        let lo = 8;
+        let hi = 80;
+        for (let i = 0; i < 26; i++) {
+          const mid = (lo + hi) / 2;
+          const m = measure(mid, lookY);
+          if (m.right - m.left > targetWidth) lo = mid;
+          else hi = mid;
+        }
+        fov = (lo + hi) / 2;
+        // look height: looking higher pushes the floor down the screen.
+        let ly = -4;
+        let hy = 6;
+        for (let i = 0; i < 26; i++) {
+          const mid = (ly + hy) / 2;
+          const m = measure(fov, mid);
+          if (m.floor > FIT_FLOOR) ly = mid;
+          else hy = mid;
+        }
+        lookY = (ly + hy) / 2;
+      }
+      return { fov, lookY, rect: measure(fov, lookY) };
+    };
+
+    let best = solve(FIT_WIDTH);
+    // On tall/narrow boxes the full-width fit pushes the bar off the top —
+    // step back until the whole frame is comfortably inside the view.
+    for (let w = FIT_WIDTH; best.rect.bar > MAX_BAR && w > 30; w -= 4) {
+      best = solve(w);
+    }
+    measure(best.fov, best.lookY);
+    onRect?.(best.rect);
+  }, [camera, size.width, size.height, onRect]);
+
+  return null;
+}
+
 // ─── main exported components ─────────────────────────────────────────────────
 
 export type SetPiece3DSceneProps = {
@@ -359,7 +443,10 @@ export type SetPiece3DSceneProps = {
    * 2D overlay, whose flight reads more smoothly at this scene size.
    */
   showBall?: boolean | undefined;
+  /** Reports where the goal landed on screen so the 2D overlay can match it. */
+  onGoalRect?: ((r: GoalRect) => void) | undefined;
 };
+
 
 /**
  * POV scene for penalty and free kick: camera sits at the penalty spot
