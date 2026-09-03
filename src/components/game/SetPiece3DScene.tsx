@@ -52,37 +52,85 @@ export type SetPieceKick = {
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
+/** Net mesh: a fine grid, so it reads as netting rather than a flat pane. */
+function Net({
+  w,
+  h,
+  cells = 26,
+}: {
+  w: number;
+  h: number;
+  cells?: number;
+}) {
+  const geo = useMemo(() => {
+    const rows = Math.max(3, Math.round((cells * h) / w));
+    return new THREE.PlaneGeometry(w, h, cells, rows);
+  }, [w, h, cells]);
+  return (
+    <mesh geometry={geo}>
+      <meshBasicMaterial
+        color="#f2fbff"
+        transparent
+        opacity={0.32}
+        side={THREE.DoubleSide}
+        wireframe
+      />
+    </mesh>
+  );
+}
+
+const NET_D = 1.9; // how deep the net runs behind the line
+
 function GoalNet() {
+  const half = GOAL_W / 2;
   return (
     <group position={[0, 0, 0]}>
-      {/* Left post */}
-      <mesh position={[-GOAL_W / 2, GOAL_H / 2, 0]}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
-      </mesh>
-      {/* Right post */}
-      <mesh position={[GOAL_W / 2, GOAL_H / 2, 0]}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
-      </mesh>
-      {/* Crossbar */}
+      {/* Posts + crossbar — thicker, so the frame has real presence */}
+      {[-half, half].map((x) => (
+        <mesh key={x} position={[x, GOAL_H / 2, 0]} castShadow>
+          <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 16]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.05} />
+        </mesh>
+      ))}
       <mesh position={[0, GOAL_H, 0]} rotation-z={Math.PI / 2}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_W + POST_R * 2, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+        <cylinderGeometry args={[POST_R, POST_R, GOAL_W + POST_R * 2, 16]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.05} />
       </mesh>
-      {/* Net back */}
-      <mesh position={[0, GOAL_H / 2, -1.2]}>
-        <planeGeometry args={[GOAL_W, GOAL_H]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.18} side={THREE.DoubleSide} wireframe />
+
+      {/* Back stanchions */}
+      {[-half, half].map((x) => (
+        <mesh key={`s${x}`} position={[x, (GOAL_H * 0.55) / 2, -NET_D]}>
+          <cylinderGeometry args={[POST_R * 0.6, POST_R * 0.6, GOAL_H * 0.55, 10]} />
+          <meshStandardMaterial color="#eef4f8" roughness={0.5} />
+        </mesh>
+      ))}
+
+      {/* Netting: back, roof and both sides */}
+      <group position={[0, GOAL_H * 0.275, -NET_D]}>
+        <Net w={GOAL_W} h={GOAL_H * 0.55} />
+      </group>
+      <group position={[0, GOAL_H, -NET_D / 2]} rotation-x={-Math.PI / 2 - 0.34}>
+        <Net w={GOAL_W} h={NET_D * 1.08} />
+      </group>
+      {[-half, half].map((x) => (
+        <group key={`n${x}`} position={[x, GOAL_H / 2, -NET_D / 2]} rotation-y={Math.PI / 2}>
+          <Net w={NET_D} h={GOAL_H} cells={12} />
+        </group>
+      ))}
+
+      {/* Goal line + shadow patch under the frame */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.004, 0]}>
+        <planeGeometry args={[GOAL_W + 6, 0.12]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.55} />
       </mesh>
-      {/* Net top */}
-      <mesh position={[0, GOAL_H, -0.6]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[GOAL_W, 1.2]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.18} side={THREE.DoubleSide} wireframe />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.002, -NET_D / 2]}>
+        <planeGeometry args={[GOAL_W, NET_D]} />
+        <meshBasicMaterial color="#0b1f12" transparent opacity={0.28} />
       </mesh>
     </group>
   );
 }
+
 
 /**
  * The struck ball. Its path is derived from the same numbers the 2D outcome
