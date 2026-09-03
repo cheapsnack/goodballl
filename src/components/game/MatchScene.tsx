@@ -48,7 +48,7 @@ import { useRoomChannel } from "../../multiplayer/useRoomChannel";
 import { buildSnapshot, applySnapshot } from "../../multiplayer/snapshot";
 import type { GuestInputPayload } from "../../multiplayer/types";
 import type { BallState, Kinematics, MovementInput } from "../../game/types";
-import { PlayerLabels } from "./PlayerLabels";
+
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
@@ -1243,66 +1243,11 @@ export function MatchScene() {
         <meshBasicMaterial color="#fff45c" transparent opacity={0.85} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Player name labels — driven by a reactive sub-component so they
-          update from the store without re-rendering the whole MatchScene. */}
-      <LivePlayerLabels
-        homeXI={homeXI}
-        awayXI={awayXI}
-        homeClub={homeClub}
-        awayClub={awayClub}
-      />
+      {/* Player names moved to the bottom-left DOM panel (PlayerNamesPanel) —
+          the old in-world <Html> labels ghosted in PvP because positions are
+          mutated in place, so React never re-rendered them. */}
     </>
   );
-}
-
-/**
- * Reads positions and the controlled index from the store reactively and
- * renders labels only for: the controlled player + the 3 players (on either
- * team) nearest to the ball. This stops the pile-up when players bunch.
- */
-function LivePlayerLabels({
-  homeXI,
-  awayXI,
-  homeClub,
-  awayClub,
-}: {
-  homeXI: ReturnType<typeof buildOutfield>;
-  awayXI: ReturnType<typeof buildOutfield>;
-  homeClub: ReturnType<typeof getClub>;
-  awayClub: ReturnType<typeof getClub>;
-}) {
-  const homeOutfield = useGameStore((s) => s.homeOutfield);
-  const awayOutfield = useGameStore((s) => s.awayOutfield);
-  const controlledIndex = useGameStore((s) => s.controlledIndex);
-  const ball = useGameStore((s) => s.ball);
-
-  // Build a full list with distances from ball, mark which are visible.
-  type Entry = { id: string; position: { x: number; z: number }; name: string; color: string; controlled: boolean; distToBall: number };
-  const all: Entry[] = [
-    ...homeXI.map((e, i) => ({
-      id: e.role.id,
-      position: homeOutfield[i]?.position ?? e.body.position,
-      name: e.player.name,
-      color: homeClub.primaryColor,
-      controlled: i === controlledIndex,
-      distToBall: Math.hypot((homeOutfield[i]?.position.x ?? 0) - ball.position.x, (homeOutfield[i]?.position.z ?? 0) - ball.position.z),
-    })),
-    ...awayXI.map((e, i) => ({
-      id: e.role.id,
-      position: awayOutfield[i]?.position ?? e.body.position,
-      name: e.player.name,
-      color: awayClub.primaryColor,
-      controlled: false,
-      distToBall: Math.hypot((awayOutfield[i]?.position.x ?? 0) - ball.position.x, (awayOutfield[i]?.position.z ?? 0) - ball.position.z),
-    })),
-  ];
-
-  // Always show controlled player; also show the 3 closest to ball.
-  const byDist = [...all].sort((a, b) => a.distToBall - b.distToBall);
-  const nearIds = new Set(byDist.slice(0, 3).map((e) => e.id));
-  const visible = all.filter((e) => e.controlled || nearIds.has(e.id));
-
-  return <PlayerLabels players={visible} />;
 }
 
 /**

@@ -5,6 +5,7 @@ import { BallTrail } from "./BallTrail";
 import { ControlsHint } from "./ControlsHint";
 import { PowerBar } from "./PowerBar";
 import { MatchHud } from "./MatchHud";
+import { PlayerNamesPanel } from "./PlayerNamesPanel";
 import { SoundToggle } from "./SoundToggle";
 import { PenaltyShootout } from "./PenaltyShootout";
 import { useGameStore } from "../../game/store/useGameStore";
@@ -50,6 +51,7 @@ export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
         <BallTrail />
       </Canvas>
       <MatchHud onExit={onExit} />
+      {!inShootout && <PlayerNamesPanel />}
       <SoundToggle />
       <PowerBar />
       <ControlsHint />
