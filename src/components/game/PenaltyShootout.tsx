@@ -6,10 +6,13 @@ import { playKick, playWhistle } from "../../game/logic/audio";
 import {
   applyPenalty,
   keeperGuess,
+  PENALTY_LEVEL_TUNING,
+  PENALTY_LEVELS,
   PENALTY_TUNING,
   resolvePenalty,
   shootoutScore,
   type PenaltyAim,
+  type PenaltyLevel,
   type PenaltyOutcome,
 } from "../../game/logic/penalties";
 
@@ -18,9 +21,10 @@ import {
  * second. Slowed down from the first pass — the reticle used to shoot past
  * the corner you were aiming for before you could release.
  */
-const AIM_SPEED = { x: 0.85, y: 0.65 };
-/** Seconds of holding Space to reach full power. */
-const POWER_TIME = 1.1;
+/** Defaults; the live values come from the selected shootout level. */
+const AIM_SPEED = PENALTY_LEVEL_TUNING.normal.aimSpeed;
+/** Seconds of holding Space to reach full power, at Normal. */
+const POWER_TIME = PENALTY_LEVEL_TUNING.normal.powerTime;
 /** Ball flight, in ms, at zero power — a hard strike arrives quicker. */
 const FLIGHT_MS = { slow: 620, fast: 320 };
 /** How long the finished kick stays on screen before the next taker. */
@@ -57,6 +61,9 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const shootout = useGameStore((s) => s.shootout);
   const setShootout = useGameStore((s) => s.setShootout);
   const difficulty = useGameStore((s) => s.difficulty);
+  const penaltyLevel = useGameStore((s) => s.penaltyLevel);
+  const setPenaltyLevel = useGameStore((s) => s.setPenaltyLevel);
+  const level = PENALTY_LEVEL_TUNING[penaltyLevel];
   const homeClub = getClub(useGameStore((s) => s.homeClubId));
   const awayClub = getClub(useGameStore((s) => s.awayClubId));
 
@@ -82,7 +89,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const takerSide = shootout.turn;
   // Keeper reads your aim far less well than an outfield AI reads a shot —
   // the shootout is meant to be winnable, not a coin flip against a wall.
-  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * 0.3;
+  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * level.keeperAccuracy;
 
   const after = (ms: number, fn: () => void) => {
     timers.current.push(window.setTimeout(fn, ms));
@@ -101,7 +108,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
       if (busy.current) return;
       busy.current = true;
       const guess = keeperGuess(kickAim, keeperAccuracy);
-      const shot = resolvePenalty(kickAim, kickPower, guess);
+      const shot = resolvePenalty(kickAim, kickPower, guess, level.keeperReachScale);
       const p = Math.max(0, Math.min(1, kickPower));
       const flight = Math.round(FLIGHT_MS.slow + (FLIGHT_MS.fast - FLIGHT_MS.slow) * p);
 
@@ -186,12 +193,12 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         const dy = (h.has("ArrowUp") || h.has("KeyW") ? 1 : 0) - (h.has("ArrowDown") || h.has("KeyS") ? 1 : 0);
         if (dx !== 0 || dy !== 0) {
           setAim((a) => ({
-            x: Math.max(-1, Math.min(1, a.x + dx * AIM_SPEED.x * dt)),
-            y: Math.max(0, Math.min(1, a.y + dy * AIM_SPEED.y * dt)),
+            x: Math.max(-1, Math.min(1, a.x + dx * level.aimSpeed.x * dt)),
+            y: Math.max(0, Math.min(1, a.y + dy * level.aimSpeed.y * dt)),
           }));
         }
         if (h.has("Space")) {
-          powerRef.current = Math.min(1, powerRef.current + dt / POWER_TIME);
+          powerRef.current = Math.min(1, powerRef.current + dt / level.powerTime);
           setPower(powerRef.current);
         }
       }
@@ -199,7 +206,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [isHomeTurn]);
+  }, [isHomeTurn, level]);
 
   // --- AI taker ---
   useEffect(() => {
@@ -235,6 +242,29 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
 
       <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
         Penalty Shootout
+      </div>
+
+      {/* Shootout difficulty: keeper reading and power-window width */}
+      <div className="mt-3 flex flex-col items-center gap-1">
+        <div className="flex gap-1.5">
+          {PENALTY_LEVELS.map((lv) => {
+            const active = lv === penaltyLevel;
+            return (
+              <button
+                key={lv}
+                onClick={() => setPenaltyLevel(lv)}
+                className={`rounded-md border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
+                  active
+                    ? "border-background/70 bg-background/15 text-background"
+                    : "border-background/20 text-background/55 hover:bg-background/10"
+                }`}
+              >
+                {PENALTY_LEVEL_TUNING[lv].label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[10px] uppercase tracking-[0.16em] text-background/40">{level.blurb}</div>
       </div>
 
       {/* Score line */}
