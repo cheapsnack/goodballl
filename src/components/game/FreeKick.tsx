@@ -4,7 +4,7 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
-import { SetPiece3DScene } from "./SetPiece3DScene";
+import { SetPiece3DScene, type SetPieceKick } from "./SetPiece3DScene";
 import type { PenaltyAim } from "../../game/logic/penalties";
 import {
   applyFreeKick,
@@ -69,6 +69,9 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
   const [keeper, setKeeper] = useState({ x: 50, y: GOAL_FLOOR, tilt: 0 });
   const [outcome, setOutcome] = useState<FreeKickOutcome | null>(null);
   const [kickTrigger, setKickTrigger] = useState(false);
+  /** The kick handed to the 3D scene — driven by the same free-kick maths. */
+  const [kick3d, setKick3d] = useState<SetPieceKick | null>(null);
+  const kickSeq = useRef(1);
   const [netShake, setNetShake] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
@@ -121,6 +124,18 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
               : toScene(kickAim);
       const flightMs = shot === "wall" ? Math.round(flight * 0.5) : flight;
       setBall({ x: target.x, y: target.y, scale: 0.55, ms: flightMs, curve: kickCurve });
+      // The 3D ball uses the same aim, bend and flight time, so its curve and
+      // the keeper's dive line up with what the outcome maths decided.
+      setKick3d({
+        id: kickSeq.current++,
+        aim: kickAim,
+        curve: kickCurve,
+        power: p,
+        outcome: shot,
+        flightMs,
+        keeperTarget: guess,
+        wallX: wall.x,
+      });
 
       after(flightMs, () => {
         setOutcome(shot);
@@ -143,6 +158,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         setAim({ x: 0.3, y: 0.5 });
         setCurve(0);
         setBall(ballAtSpot());
+        setKick3d(null);
         setKeeper({ x: 50, y: GOAL_FLOOR, tilt: 0 });
         setWallSide((s) => (s === -1 ? 1 : -1));
         busy.current = false;
@@ -330,14 +346,8 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           defenderColor={awayClub.primaryColor}
           wallData={wall}
           wallSide={wallSide}
-          keeperDiveTarget={
-            keeper.tilt !== 0 || keeper.x !== 50
-              ? {
-                  x: (keeper.x - 50) / 34,
-                  y: Math.max(0, (keeper.y - GOAL_FLOOR) / (GOAL.height - 8)),
-                }
-              : null
-          }
+          keeperDiveTarget={kick3d?.keeperTarget ?? null}
+          kick={kick3d}
         />
 
         {/* Mown stripes overlay */}
@@ -394,19 +404,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           </div>
         )}
 
-        {/* Ball — bend shows as a lateral skew during flight */}
-        <div
-          className="absolute h-5 w-5 -translate-x-1/2 translate-y-1/2 rounded-full bg-background shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-          style={{
-            left: `${ball.x}%`,
-            bottom: `${ball.y}%`,
-            transform: `translate(-50%, 50%) scale(${ball.scale})`,
-            zIndex: 2,
-            transition: ball.ms
-              ? `left ${ball.ms}ms cubic-bezier(${ball.curve > 0 ? ".8,.05,.4,1" : ball.curve < 0 ? ".2,.9,.6,1" : ".3,.1,.5,1"}), bottom ${ball.ms}ms cubic-bezier(.3,.1,.5,1), transform ${ball.ms}ms linear`
-              : "none",
-          }}
-        />
+        {/* Ball is rendered in 3D by SetPiece3DScene */}
 
         {outcome && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" style={{ zIndex: 3 }}>
