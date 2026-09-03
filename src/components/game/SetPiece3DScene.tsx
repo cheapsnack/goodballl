@@ -495,6 +495,25 @@ export type SetPiece3DSceneProps = {
   onGoalRect?: ((r: GoalRect) => void) | undefined;
 };
 
+/** Six-yard box and the front edge of the penalty area, drawn on the turf. */
+function BoxLines() {
+  const line = (w: number, d: number, x: number, z: number) => (
+    <mesh rotation-x={-Math.PI / 2} position={[x, 0.004, z]}>
+      <planeGeometry args={[w, d]} />
+      <meshBasicMaterial color="#ffffff" transparent opacity={0.32} />
+    </mesh>
+  );
+  return (
+    <group>
+      {line(16.5, 0.11, 0, 16.5)}
+      {line(0.11, 16.5, -8.25, 8.25)}
+      {line(0.11, 16.5, 8.25, 8.25)}
+      {line(11, 0.1, 0, 5.5)}
+      {line(0.1, 5.5, -5.5, 2.75)}
+      {line(0.1, 5.5, 5.5, 2.75)}
+    </group>
+  );
+}
 
 /**
  * POV scene for penalty and free kick: camera sits at the penalty spot
@@ -509,6 +528,7 @@ export function SetPiece3DScene({
   keeperDiveTarget = null,
   kick = null,
   showBall = false,
+  onGoalRect,
 }: SetPiece3DSceneProps) {
   return (
     <div
@@ -524,12 +544,16 @@ export function SetPiece3DScene({
         dpr={[1, 1.5]}
         camera={{ position: [0, CAM_Y, CAM_Z], fov: 40, near: 0.1, far: 60 }}
         gl={{ antialias: true, alpha: false }}
-        style={{ background: "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)" }}
+        style={{ background: "linear-gradient(#16321f 0%, #1d4128 45%, #27553４ 100%)" }}
       >
-        <color attach="background" args={["#1e4a2c"]} />
-        <ambientLight intensity={0.65} />
-        <directionalLight position={[4, 8, 6]} intensity={1.6} />
-        <hemisphereLight args={["#c8e8ff", "#1a4025", 0.5]} />
+        <color attach="background" args={["#17331f"]} />
+        <fog attach="fog" args={["#17331f", 26, 46]} />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[6, 12, 8]} intensity={1.7} />
+        <directionalLight position={[-6, 6, 4]} intensity={0.5} color="#bcd8ff" />
+        <hemisphereLight args={["#cfe9ff", "#1a4025", 0.55]} />
+        <FitGoal onRect={onGoalRect} />
+
 
         {/* Pitch surface + mown stripes for depth */}
         <mesh rotation-x={-Math.PI / 2} position={[0, 0, 3]} receiveShadow>
