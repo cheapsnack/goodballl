@@ -152,24 +152,47 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
   const canKick = !set.done;
 
   // --- input: arrows/WASD aim, Z/X bend, Space charge & release ---
+  const takeRef = useRef(take);
+  takeRef.current = take;
+  const canKickRef = useRef(canKick);
+  canKickRef.current = canKick;
+  const levelRef = useRef(level);
+  levelRef.current = level;
+
+  const release = useCallback(() => {
+    if (powerRef.current > 0 && !busy.current && canKickRef.current) {
+      takeRef.current(aimRef.current, curveRef.current, powerRef.current);
+    }
+    powerRef.current = 0;
+    setPower(0);
+  }, []);
+
   useEffect(() => {
+    const isSpace = (e: KeyboardEvent) => e.code === "Space" || e.key === " " || e.key === "Spacebar";
     const down = (e: KeyboardEvent) => {
-      held.current.add(e.code);
-      if (e.code === "Space") e.preventDefault();
-    };
-    const up = (e: KeyboardEvent) => {
-      held.current.delete(e.code);
-      if (e.code === "Space" && powerRef.current > 0 && !busy.current && canKick) {
-        take(aimRef.current, curveRef.current, powerRef.current);
+      held.current.add(e.code || e.key);
+      if (isSpace(e)) {
+        held.current.add("Space");
+        e.preventDefault();
       }
     };
+    const up = (e: KeyboardEvent) => {
+      held.current.delete(e.code || e.key);
+      if (isSpace(e)) {
+        held.current.delete("Space");
+        release();
+      }
+    };
+    const blur = () => held.current.clear();
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
     };
-  }, [canKick, take]);
+  }, [release]);
 
   useEffect(() => {
     let raf = 0;
@@ -177,7 +200,8 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
     const loop = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      if (canKick && !busy.current) {
+      const lv = levelRef.current;
+      if (canKickRef.current && !busy.current) {
         const h = held.current;
         const dx =
           (h.has("ArrowRight") || h.has("KeyD") ? 1 : 0) - (h.has("ArrowLeft") || h.has("KeyA") ? 1 : 0);
@@ -185,16 +209,16 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           (h.has("ArrowUp") || h.has("KeyW") ? 1 : 0) - (h.has("ArrowDown") || h.has("KeyS") ? 1 : 0);
         if (dx !== 0 || dy !== 0) {
           setAim((a) => ({
-            x: Math.max(-1, Math.min(1, a.x + dx * level.aimSpeed.x * dt)),
-            y: Math.max(0, Math.min(1, a.y + dy * level.aimSpeed.y * dt)),
+            x: Math.max(-1, Math.min(1, a.x + dx * lv.aimSpeed.x * dt)),
+            y: Math.max(0, Math.min(1, a.y + dy * lv.aimSpeed.y * dt)),
           }));
         }
         const dc = (h.has("KeyX") ? 1 : 0) - (h.has("KeyZ") ? 1 : 0);
         if (dc !== 0) {
-          setCurve((c) => Math.max(-1, Math.min(1, c + dc * level.curveSpeed * dt)));
+          setCurve((c) => Math.max(-1, Math.min(1, c + dc * lv.curveSpeed * dt)));
         }
         if (h.has("Space")) {
-          powerRef.current = Math.min(1, powerRef.current + dt / level.powerTime);
+          powerRef.current = Math.min(1, powerRef.current + dt / lv.powerTime);
           setPower(powerRef.current);
         }
       }
@@ -202,7 +226,8 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [canKick, level]);
+  }, []);
+
 
   const goals = freeKickScore(set.results);
   const reticle = toScene(aim);
@@ -427,12 +452,39 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
       </div>
 
       {/* Power meter */}
-      <div className="mt-3 h-3 w-full max-w-2xl overflow-hidden rounded-full bg-background/15">
-        <div
-          className="h-full rounded-full bg-[#63d68a] transition-[width] duration-75"
-          style={{ width: `${power * 100}%` }}
-        />
+      <div className="mt-3 w-full max-w-2xl">
+        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.2em] text-background/45">
+          <span>Power — hold Space (or the button)</span>
+          <span className="tabular-nums text-background/70">{Math.round(power * 100)}%</span>
+        </div>
+        <div className="mt-1 h-3 w-full overflow-hidden rounded-full bg-background/15">
+          <div
+            className="h-full rounded-full bg-[#63d68a]"
+            style={{ width: `${power * 100}%` }}
+          />
+        </div>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            held.current.add("Space");
+          }}
+          onPointerUp={() => {
+            held.current.delete("Space");
+            release();
+          }}
+          onPointerLeave={() => {
+            if (held.current.has("Space")) {
+              held.current.delete("Space");
+              release();
+            }
+          }}
+          className="pointer-events-auto mt-2 w-full select-none rounded-md border border-background/25 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-background/60 transition-colors hover:bg-background/10"
+        >
+          Hold to charge
+        </button>
       </div>
+
 
       {set.done ? (
         <div className="mt-5 text-center">
