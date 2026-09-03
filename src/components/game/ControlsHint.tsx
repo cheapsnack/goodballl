@@ -10,7 +10,7 @@ export function ControlsHint() {
   const hasBookings = useGameStore((s) => s.bookings.length > 0);
   return (
     <div
-      className={`pointer-events-none fixed left-4 rounded-md bg-foreground/70 px-3 py-2 font-mono text-xs text-background backdrop-blur-sm ${
+      className={`pointer-events-none fixed left-4 rounded-md bg-foreground/70 px-3 py-2 font-mono text-xs text-background backdrop-blur-sm hidden md:block ${
         hasBookings ? "bottom-14" : "bottom-4"
       }`}
     >
