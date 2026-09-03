@@ -3,90 +3,81 @@ import { useGameStore, HOME_DEFEND_SIDE, AWAY_DEFEND_SIDE } from "../../game/sto
 import { getClub } from "../../game/data/clubs";
 import { buildOutfield } from "../../game/logic/ai/outfield";
 
-type Row = {
-  id: string;
-  name: string;
-  color: string;
-  team: "home" | "away";
-  controlled: boolean;
-  distToBall: number;
-};
+type Row = { name: string; color: string; club: string } | null;
 
 /**
- * Bottom-left HUD panel showing readable player names: the controlled
- * player plus the 3 players nearest the ball. Rendered as DOM (not 3D
- * labels) so it never ghosts in networked matches — positions are read
- * imperatively on a timer instead of subscribing to per-frame mutations.
+ * On-screen names of the human-controlled players only: yours bottom-left
+ * and — in a two-human match (local 1v1 or an online room) — the opponent's
+ * bottom-right. Rendered as DOM rather than 3D labels so it never ghosts in
+ * networked matches, where positions mutate in place without re-rendering.
  */
 export function PlayerNamesPanel() {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [home, setHome] = useState<Row>(null);
+  const [away, setAway] = useState<Row>(null);
+  const netRole = useGameStore((s) => s.netRole);
+  const twoHuman = netRole !== "local";
 
   useEffect(() => {
     const tick = () => {
       const s = useGameStore.getState();
       const homeClub = getClub(s.homeClubId);
       const awayClub = getClub(s.awayClubId);
+
       const homeXI = buildOutfield(homeClub, HOME_DEFEND_SIDE, s.mentality);
-      const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE, s.mentality);
-      const ball = s.ball.position;
-
-      const dist = (p: { x: number; z: number }) => Math.hypot(p.x - ball.x, p.z - ball.z);
-
-      const all: Row[] = [
-        ...homeXI.map((e, i) => ({
-          id: e.role.id,
-          name: e.player.name,
-          color: homeClub.primaryColor,
-          team: "home" as const,
-          controlled: i === s.controlledIndex,
-          distToBall: dist(s.homeOutfield[i]?.position ?? e.body.position),
-        })),
-        ...awayXI.map((e, i) => ({
-          id: e.role.id,
-          name: e.player.name,
-          color: awayClub.primaryColor,
-          team: "away" as const,
-          controlled: i === s.awayControlledIndex,
-          distToBall: dist(s.awayOutfield[i]?.position ?? e.body.position),
-        })),
-      ];
-
-      const near = new Set(
-        [...all].sort((a, b) => a.distToBall - b.distToBall).slice(0, 3).map((r) => r.id),
+      const mine = homeXI[s.controlledIndex];
+      setHome(
+        mine
+          ? { name: mine.player.name, color: homeClub.primaryColor, club: homeClub.shortName }
+          : null,
       );
-      setRows(all.filter((r) => r.controlled || near.has(r.id)));
+
+      if (twoHuman) {
+        const awayXI = buildOutfield(awayClub, AWAY_DEFEND_SIDE, s.mentality);
+        const theirs = awayXI[s.awayControlledIndex];
+        setAway(
+          theirs
+            ? { name: theirs.player.name, color: awayClub.primaryColor, club: awayClub.shortName }
+            : null,
+        );
+      } else {
+        setAway(null);
+      }
     };
 
     tick();
     const id = setInterval(tick, 150);
     return () => clearInterval(id);
-  }, []);
-
-  if (rows.length === 0) return null;
+  }, [twoHuman]);
 
   return (
-    <div className="pointer-events-none fixed bottom-4 left-4 z-10 flex flex-col gap-1 rounded-md bg-foreground/80 px-3 py-2 font-sans text-background shadow-lg backdrop-blur-sm">
-      {rows.map((r) => (
-        <div key={r.id} className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="inline-block h-3 w-3 rounded-full"
-            style={{ backgroundColor: r.color, boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }}
-          />
-          <span
-            className={`text-sm leading-tight ${
-              r.controlled ? "font-black text-yellow-300" : "font-semibold text-background/90"
-            }`}
-          >
-            {r.name}
-          </span>
-          {r.controlled && (
-            <span className="rounded-sm bg-yellow-400/90 px-1 py-px text-[9px] font-black uppercase tracking-widest text-foreground">
-              You
-            </span>
-          )}
-        </div>
-      ))}
+    <>
+      {home && <NameCard row={home} side="left" tag="You" />}
+      {away && <NameCard row={away} side="right" tag="P2" />}
+    </>
+  );
+}
+
+function NameCard({ row, side, tag }: { row: NonNullable<Row>; side: "left" | "right"; tag: string }) {
+  return (
+    <div
+      className={`pointer-events-none fixed bottom-4 z-10 flex items-center gap-2.5 rounded-lg bg-foreground/80 px-4 py-2.5 font-sans text-background shadow-lg backdrop-blur-sm ${
+        side === "left" ? "left-4" : "right-4"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="inline-block h-4 w-4 rounded-full"
+        style={{ backgroundColor: row.color, boxShadow: "0 0 0 1px rgba(0,0,0,0.35)" }}
+      />
+      <div className="flex flex-col leading-tight">
+        <span className="text-lg font-black text-yellow-300">{row.name}</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-background/60">
+          {row.club}
+        </span>
+      </div>
+      <span className="rounded-sm bg-yellow-400/90 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-foreground">
+        {tag}
+      </span>
     </div>
   );
 }
