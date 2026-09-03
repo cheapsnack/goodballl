@@ -281,42 +281,56 @@ function Keeper({
   );
 }
 
-/** Row of wall defenders — simple low-poly capsule shapes. */
+/** One wall defender — the same rigged footballer as the pitch players. */
+function WallMan({
+  x,
+  jersey,
+  shorts,
+  lift,
+}: {
+  x: number;
+  jersey: string;
+  shorts: string;
+  lift: number;
+}) {
+  const { scene } = useGLTF(MODEL_PATH);
+  const clone = useKitClone(scene, jersey, shorts);
+  return (
+    <group position={[x, lift, WALL_Z]} rotation={[0, Math.PI, 0]} scale={[0.92, 0.92, 0.92]}>
+      <primitive object={clone} />
+    </group>
+  );
+}
+
+/**
+ * Defensive wall, placed from exactly the numbers the 2D collision uses:
+ * `wallData.x` is the wall centre in goal half-widths and `halfWidth` its
+ * half-span, so a shot the maths calls "wall" visibly meets a body.
+ */
 function Wall({
   wallData,
-  side,
   color,
+  accent,
 }: {
-  wallData: { x: number; halfWidth: number } | null;
-  side: -1 | 1;
+  wallData: { x: number; halfWidth: number; height?: number } | null;
   color: string;
+  accent: string;
 }) {
   if (!wallData) return null;
-  const count = 4;
-  const spacing = 0.85;
-  const xs = Array.from({ length: count }, (_, i) =>
-    side * (Math.abs(wallData.x) * GOAL_W * 0.5) + (i - (count - 1) / 2) * spacing
+  const half = wallData.halfWidth * (GOAL_W / 2);
+  const centre = wallData.x * (GOAL_W / 2);
+  const count = Math.max(2, Math.round((half * 2) / 0.52));
+  const xs = Array.from(
+    { length: count },
+    (_, i) => centre - half + ((i + 0.5) / count) * half * 2,
   );
+  // Wall height above 1 means the jump clears more than the bar's worth of
+  // ground — lift the figures so the picture matches the block maths.
+  const lift = Math.max(0, ((wallData.height ?? 1) - 1) * 0.35);
   return (
     <>
       {xs.map((x, i) => (
-        <group key={i} position={[x, 0, WALL_Z]}>
-          {/* head */}
-          <mesh position={[0, 1.72, 0]}>
-            <sphereGeometry args={[0.14, 10, 8]} />
-            <meshStandardMaterial color="#c8a070" />
-          </mesh>
-          {/* body */}
-          <mesh position={[0, 1.1, 0]}>
-            <capsuleGeometry args={[0.24, 0.82, 6, 10]} />
-            <meshStandardMaterial color={color} />
-          </mesh>
-          {/* legs */}
-          <mesh position={[0, 0.26, 0]}>
-            <capsuleGeometry args={[0.2, 0.4, 4, 8]} />
-            <meshStandardMaterial color="#222" />
-          </mesh>
-        </group>
+        <WallMan key={i} x={x} jersey={color} shorts={accent} lift={lift} />
       ))}
     </>
   );
