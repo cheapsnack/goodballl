@@ -319,7 +319,7 @@ function Wall({
   if (!wallData) return null;
   const half = wallData.halfWidth * (GOAL_W / 2);
   const centre = wallData.x * (GOAL_W / 2);
-  const count = Math.max(2, Math.round((half * 2) / 0.52));
+  const count = Math.max(2, Math.round((half * 2) / 0.62));
   const xs = Array.from(
     { length: count },
     (_, i) => centre - half + ((i + 0.5) / count) * half * 2,
