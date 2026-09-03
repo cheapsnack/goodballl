@@ -10,7 +10,7 @@ import {
   resolveFreeKick,
 } from "./freekicks";
 
-const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.54
+const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.70
 
 describe("hitsWall", () => {
   it("blocks a low straight ball hit at the wall", () => {
