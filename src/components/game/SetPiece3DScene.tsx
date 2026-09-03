@@ -412,13 +412,14 @@ export function SetPiece3DScene({
         <GoalNet />
 
         {/* Wall (free kicks only) */}
-        <Wall wallData={wallData} side={wallSide} color={defenderColor} />
+        <Wall wallData={wallData} color={defenderColor} accent={defenderAccent} />
 
         {/* Goalkeeper */}
         <Keeper
           color={defenderColor}
           diveTarget={keeperDiveTarget ?? null}
           diveMs={kick?.flightMs ?? 500}
+          reach={keeperReach}
         />
 
         {/* Ball in flight (opt-in — the 2D overlay ball is the default) */}
