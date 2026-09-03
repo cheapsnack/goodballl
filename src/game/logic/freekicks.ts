@@ -95,18 +95,22 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 /** A wall placed to cover the near-post side of the taker's position. */
 export function buildWall(side: -1 | 1, level: FreeKickLevel): Wall {
   const t = FREEKICK_LEVEL_TUNING[level];
-  return { x: side * 0.34, halfWidth: 0.3, height: t.wallHeight };
+  return { x: side * 0.34, halfWidth: 0.32, height: t.wallHeight };
 }
 
 /**
- * Whether the strike is blocked. A ball bent hard enough travels around the
- * wall; a flat low ball straight at it does not.
+ * Whether the strike is blocked. The ball crosses the wall line before it has
+ * fully risen or fully bent, so a partial curve only shifts the crossing point
+ * proportionally: only a real bend (or a shot over/around) beats the wall.
  */
 export function hitsWall(aim: PenaltyAim, curve: number, wall: Wall): boolean {
-  if (Math.abs(curve) >= FREEKICK_TUNING.bendAroundWall) return false;
-  if (aim.y > wall.height) return false;
-  return Math.abs(aim.x - wall.x) <= wall.halfWidth;
+  const c = clamp(curve, -1, 1);
+  const crossX = aim.x - c * FREEKICK_TUNING.bendAroundWall;
+  const crossY = aim.y * FREEKICK_TUNING.riseAtWall;
+  if (crossY > wall.height) return false;
+  return Math.abs(crossX - wall.x) <= wall.halfWidth;
 }
+
 
 /** Where the keeper dives: biased toward the aim by `accuracy` (0…1). */
 export function keeperGuessFK(
