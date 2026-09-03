@@ -508,7 +508,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           <div
             className="h-full rounded-full"
             style={{
-              width: `${power * 100}%`,
+              width: power > 0 ? `${Math.max(3, power * 100)}%` : "0%",
               // Gradient spans the whole track, so the green zone is always
               // visible at the start of the fill instead of the bar jumping
               // straight to a solid warning colour.

@@ -45,7 +45,7 @@ export const PENALTY_LEVEL_TUNING: Record<
   easy: {
     keeperAccuracy: 0.1,
     keeperReachScale: 0.78,
-    powerTime: 1.5,
+    powerTime: 1.1,
     aimSpeed: { x: 0.65, y: 0.5 },
     label: "Easy",
     blurb: "Keeper guesses blind · slow power meter",
@@ -53,7 +53,7 @@ export const PENALTY_LEVEL_TUNING: Record<
   normal: {
     keeperAccuracy: 0.3,
     keeperReachScale: 1,
-    powerTime: 1.1,
+    powerTime: 0.85,
     aimSpeed: { x: 0.85, y: 0.65 },
     label: "Normal",
     blurb: "Balanced dive and power window",
@@ -61,7 +61,7 @@ export const PENALTY_LEVEL_TUNING: Record<
   hard: {
     keeperAccuracy: 0.55,
     keeperReachScale: 1.2,
-    powerTime: 0.7,
+    powerTime: 0.6,
     aimSpeed: { x: 1.35, y: 1.05 },
     label: "Hard",
     blurb: "Keeper reads you · tight power window",
