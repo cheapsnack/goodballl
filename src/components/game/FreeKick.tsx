@@ -348,6 +348,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           wallSide={wallSide}
           keeperDiveTarget={kick3d?.keeperTarget ?? null}
           kick={kick3d}
+          showBall={false}
         />
 
         {/* Mown stripes overlay */}
@@ -404,7 +405,20 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           </div>
         )}
 
-        {/* Ball is rendered in 3D by SetPiece3DScene */}
+        {/* Ball — 2D flight (smoother than the 3D pass); bend shows as a
+            lateral skew during flight. */}
+        <div
+          className="absolute h-5 w-5 -translate-x-1/2 translate-y-1/2 rounded-full bg-background shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+          style={{
+            left: `${ball.x}%`,
+            bottom: `${ball.y}%`,
+            transform: `translate(-50%, 50%) scale(${ball.scale})`,
+            zIndex: 2,
+            transition: ball.ms
+              ? `left ${ball.ms}ms cubic-bezier(${ball.curve > 0 ? ".8,.05,.4,1" : ball.curve < 0 ? ".2,.9,.6,1" : ".3,.1,.5,1"}), bottom ${ball.ms}ms cubic-bezier(.3,.1,.5,1), transform ${ball.ms}ms linear`
+              : "none",
+          }}
+        />
 
         {outcome && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" style={{ zIndex: 3 }}>
