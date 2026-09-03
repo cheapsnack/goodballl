@@ -377,6 +377,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     // Non-playing statuses freeze the sim; the camera still runs below so the
     // celebration/kickoff shot stays alive.
     if (isPlayFrozen(store.matchStatus) || store.matchStatus === "kickoff") {
+      keeperHold.current = null;
       const remaining = store.statusTimer - dt;
       if (store.matchStatus === "fulltime" || store.matchStatus === "penalties") {
         // Match over (or decided from the spot): hold everything.
