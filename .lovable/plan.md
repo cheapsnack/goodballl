@@ -6,6 +6,8 @@
 2. **Pass auto-switch picks the wrong player.** Right now control jumps to whoever is nearest the ball straight after the kick - usually the passer himself. Control will switch to the intended receiver (the teammate the pass was aimed at), and only fall back to nearest-to-ball when the pass had no target.
 3. **Players crowd the ball.** Only one outfielder per side will press at a time, and the whole team's horizontal drift toward the ball is reduced further, so the back line and far-side midfield hold their shape instead of collapsing into a blob.
 4. **Throw-in transition.** The restart pause is too short for the ball and taker to settle before play goes live; lengthen it slightly so the throw visibly restarts from the correct spot.
+5. **Goal kicks restart from the keeper.** A goal kick must be placed in the six-yard box with the defending goalkeeper as the taker, and play resumes from his kick - not from a kickoff at the centre circle. Verify the goal-kick branch of the restart flow sets the taker/possession to the keeper and does not fall through to the kickoff reset.
+
 
 ## New features
 
