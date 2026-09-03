@@ -1059,20 +1059,63 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
       }
     }
 
-    if (!possession) {
+    // --- a goalkeeper holding the ball in their hands ---
+    if (keeperHold.current) {
+      const holder = keeperHold.current;
+      const gk = holder.team === "home" ? homeGK : awayGK;
+      const side = holder.team === "home" ? HOME_DEFEND_SIDE : AWAY_DEFEND_SIDE;
+      possession = null;
+      if (state.clock.elapsedTime >= holder.until) {
+        // Distribute upfield, away from their own goal.
+        const spread = Math.max(-1, Math.min(1, -gk.position.z / PITCH.halfWidth));
+        keeperHold.current = null;
+        ball = {
+          position: { x: gk.position.x - side * 1.0, y: KEEPER_HANDS.holdHeight, z: gk.position.z },
+          velocity: {
+            x: -side * KEEPER_HANDS.distributeSpeed,
+            y: KEEPER_HANDS.distributeLift,
+            z: spread * KEEPER_HANDS.distributeSpeed * 0.35,
+          },
+          heading: Math.atan2(-side, 0),
+          spin: ball.spin,
+        };
+        lastTouch = holder.team;
+      } else {
+        ball = {
+          position: { x: gk.position.x, y: KEEPER_HANDS.holdHeight, z: gk.position.z },
+          velocity: { x: 0, y: 0, z: 0 },
+          heading: gk.heading,
+          spin: ball.spin,
+        };
+        lastTouch = holder.team;
+      }
+    } else if (!possession) {
       ball = stepBall(ball, dt, { halfLength: PITCH.halfLength, halfWidth: PITCH.halfWidth });
 
-      // --- goalkeeper saves work on a loose ball only, against their fresh (post-movement) positions ---
-      const homeSaveCheck = tryKeeperSave(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
-      if (homeSaveCheck) {
-        ball = homeSaveCheck;
-        lastTouch = "away";
+      // --- keeper hands: claim a loose ball, catching it when it's takeable ---
+      const homeClaim = tryKeeperClaim(ball, homeGK, homeGKState, HOME_DEFEND_SIDE);
+      if (homeClaim) {
+        ball = homeClaim.ball;
+        lastTouch = homeClaim.kind === "caught" ? "home" : "away";
+        if (homeClaim.kind === "caught") {
+          keeperHold.current = { team: "home", until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration };
+        }
       }
-      const awaySaveCheck = tryKeeperSave(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE);
-      if (awaySaveCheck) {
-        ball = awaySaveCheck;
-        lastTouch = "home";
+      const awayClaim = !keeperHold.current
+        ? tryKeeperClaim(ball, awayGK, awayGKState, AWAY_DEFEND_SIDE)
+        : null;
+      if (awayClaim) {
+        ball = awayClaim.ball;
+        lastTouch = awayClaim.kind === "caught" ? "away" : "home";
+        if (awayClaim.kind === "caught") {
+          keeperHold.current = { team: "away", until: state.clock.elapsedTime + KEEPER_HANDS.holdDuration };
+        }
       }
+
+      if (keeperHold.current) {
+        // Ball is in the keeper's gloves this frame — nobody can capture it.
+      } else {
+
 
       // --- capture: whoever's nearest and eligible picks it up clean ---
       // Excludes whoever just released the ball (see recentRelease above) so
