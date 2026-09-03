@@ -60,7 +60,7 @@ export const FREEKICK_LEVEL_TUNING: Record<
   easy: {
     keeperAccuracy: 0.08,
     keeperReachScale: 0.75,
-    wallHeight: 0.42,
+    wallHeight: 0.66,
     powerTime: 1.7,
     aimSpeed: { x: 0.55, y: 0.42 },
     curveSpeed: 0.85,
@@ -70,7 +70,7 @@ export const FREEKICK_LEVEL_TUNING: Record<
   normal: {
     keeperAccuracy: 0.26,
     keeperReachScale: 1,
-    wallHeight: 0.54,
+    wallHeight: 0.70,
     powerTime: 1.25,
     aimSpeed: { x: 0.75, y: 0.58 },
     curveSpeed: 1,
@@ -80,7 +80,7 @@ export const FREEKICK_LEVEL_TUNING: Record<
   hard: {
     keeperAccuracy: 0.5,
     keeperReachScale: 1.18,
-    wallHeight: 0.66,
+    wallHeight: 0.80,
     powerTime: 0.85,
     aimSpeed: { x: 1, y: 0.75 },
     curveSpeed: 1.25,

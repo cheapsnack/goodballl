@@ -10,7 +10,7 @@ import {
   resolveFreeKick,
 } from "./freekicks";
 
-const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.54
+const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.70
 
 describe("hitsWall", () => {
   it("blocks a low straight ball hit at the wall", () => {
@@ -18,7 +18,7 @@ describe("hitsWall", () => {
   });
 
   it("lets a ball over the wall through", () => {
-    expect(hitsWall({ x: -0.34, y: 0.85 }, 0, wall)).toBe(false);
+    expect(hitsWall({ x: -0.34, y: 1.0 }, 0, wall)).toBe(false);
   });
 
   it("lets a heavily bent ball curl around the wall", () => {
