@@ -117,12 +117,16 @@ export function resolvePenalty(
   aim: PenaltyAim,
   power: number,
   guess: PenaltyAim,
+  /** shootout difficulty multiplier on the keeper's reach */
+  reachScale = 1,
 ): PenaltyOutcome {
   if (Math.abs(aim.x) > PENALTY_TUNING.missThreshold || aim.y > PENALTY_TUNING.missThreshold) {
     return "miss";
   }
   const reach =
-    PENALTY_TUNING.keeperReach * (1 - PENALTY_TUNING.powerPenalty * Math.max(0, Math.min(1, power)));
+    PENALTY_TUNING.keeperReach *
+    reachScale *
+    (1 - PENALTY_TUNING.powerPenalty * Math.max(0, Math.min(1, power)));
   const dist = Math.abs(aim.x - guess.x) + 0.6 * Math.abs(aim.y - guess.y);
   return dist <= reach ? "saved" : "goal";
 }
