@@ -333,19 +333,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
           />
         )}
 
-        {/* Ball */}
-        <div
-          className="absolute h-5 w-5 -translate-x-1/2 translate-y-1/2 rounded-full bg-background shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
-          style={{
-            left: `${ball.x}%`,
-            bottom: `${ball.y}%`,
-            transform: `translate(-50%, 50%) scale(${ball.scale})`,
-            transition: ball.ms
-              ? `left ${ball.ms}ms cubic-bezier(.3,.1,.5,1), bottom ${ball.ms}ms cubic-bezier(.3,.1,.5,1), transform ${ball.ms}ms linear`
-              : "none",
-            zIndex: 2,
-          }}
-        />
+        {/* Ball is rendered in 3D by SetPiece3DScene */}
+
 
         {/* Outcome stamp */}
         {outcome && (
