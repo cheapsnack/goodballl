@@ -181,24 +181,49 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   );
 
   // --- human input: arrows/WASD aim, Space charges and releases ---
+  // Kept on refs and a single always-on loop so the charge never stalls when
+  // the effect re-runs mid-hold (that stall was the dead power meter).
+  const takeRef = useRef(take);
+  takeRef.current = take;
+  const isHomeTurnRef = useRef(isHomeTurn);
+  isHomeTurnRef.current = isHomeTurn;
+  const levelRef = useRef(level);
+  levelRef.current = level;
+
+  const release = useCallback(() => {
+    if (powerRef.current > 0 && !busy.current && isHomeTurnRef.current) {
+      takeRef.current(aimRef.current, powerRef.current);
+    }
+    powerRef.current = 0;
+    setPower(0);
+  }, []);
+
   useEffect(() => {
+    const isSpace = (e: KeyboardEvent) => e.code === "Space" || e.key === " " || e.key === "Spacebar";
     const down = (e: KeyboardEvent) => {
-      held.current.add(e.code);
-      if (e.code === "Space") e.preventDefault();
-    };
-    const up = (e: KeyboardEvent) => {
-      held.current.delete(e.code);
-      if (e.code === "Space" && powerRef.current > 0 && !busy.current && isHomeTurn) {
-        take(aimRef.current, powerRef.current);
+      held.current.add(e.code || e.key);
+      if (isSpace(e)) {
+        held.current.add("Space");
+        e.preventDefault();
       }
     };
+    const up = (e: KeyboardEvent) => {
+      held.current.delete(e.code || e.key);
+      if (isSpace(e)) {
+        held.current.delete("Space");
+        release();
+      }
+    };
+    const blur = () => held.current.clear();
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
+    window.addEventListener("blur", blur);
     return () => {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+      window.removeEventListener("blur", blur);
     };
-  }, [isHomeTurn, take]);
+  }, [release]);
 
   // --- per-frame aim + power ramp for the human taker ---
   useEffect(() => {
@@ -207,18 +232,19 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
     const loop = (now: number) => {
       const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
-      if (isHomeTurn && !busy.current) {
+      const lv = levelRef.current;
+      if (isHomeTurnRef.current && !busy.current) {
         const h = held.current;
         const dx = (h.has("ArrowRight") || h.has("KeyD") ? 1 : 0) - (h.has("ArrowLeft") || h.has("KeyA") ? 1 : 0);
         const dy = (h.has("ArrowUp") || h.has("KeyW") ? 1 : 0) - (h.has("ArrowDown") || h.has("KeyS") ? 1 : 0);
         if (dx !== 0 || dy !== 0) {
           setAim((a) => ({
-            x: Math.max(-1, Math.min(1, a.x + dx * level.aimSpeed.x * dt)),
-            y: Math.max(0, Math.min(1, a.y + dy * level.aimSpeed.y * dt)),
+            x: Math.max(-1, Math.min(1, a.x + dx * lv.aimSpeed.x * dt)),
+            y: Math.max(0, Math.min(1, a.y + dy * lv.aimSpeed.y * dt)),
           }));
         }
         if (h.has("Space")) {
-          powerRef.current = Math.min(1, powerRef.current + dt / level.powerTime);
+          powerRef.current = Math.min(1, powerRef.current + dt / lv.powerTime);
           setPower(powerRef.current);
         }
       }
@@ -226,7 +252,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [isHomeTurn, level]);
+  }, []);
 
   // --- AI taker ---
   useEffect(() => {
@@ -388,6 +414,29 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             }}
           />
         </div>
+        <button
+          type="button"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            if (!isHomeTurn || busy.current) return;
+            held.current.add("Space");
+          }}
+          onPointerUp={() => {
+            if (held.current.has("Space")) {
+              held.current.delete("Space");
+              release();
+            }
+          }}
+          onPointerLeave={() => {
+            if (held.current.has("Space")) {
+              held.current.delete("Space");
+              release();
+            }
+          }}
+          className="pointer-events-auto mt-2 w-full select-none rounded-md border border-background/25 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-background/60 transition-colors hover:bg-background/10"
+        >
+          Hold to charge
+        </button>
       </div>
 
       {shootout.winner ? (
