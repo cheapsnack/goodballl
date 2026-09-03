@@ -74,6 +74,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   });
   const [outcome, setOutcome] = useState<PenaltyOutcome | null>(null);
   const [netShake, setNetShake] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   const held = useRef<Set<string>>(new Set());
   const aimRef = useRef(aim);
