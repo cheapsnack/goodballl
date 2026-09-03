@@ -13,7 +13,7 @@ import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clu
 import type { Restart } from "../logic/restarts";
 import type { Possession } from "../logic/possession";
 import type { Booking } from "../logic/bookings";
-import { initShootout, type ShootoutState } from "../logic/penalties";
+import { DEFAULT_PENALTY_LEVEL, initShootout, type PenaltyLevel, type ShootoutState } from "../logic/penalties";
 
 export const PITCH = {
   length: FIELD.length,
@@ -130,6 +130,8 @@ type GameState = {
   bookings: Booking[];
   /** Penalty shootout progress — only meaningful while matchStatus is "penalties". */
   shootout: ShootoutState;
+  /** Difficulty for the penalty shootout only — set from the shootout screen. */
+  penaltyLevel: PenaltyLevel;
 
   /** --- club selection, set from the menu before kickoff --- */
   homeClubId: string;
@@ -153,6 +155,8 @@ type GameState = {
   recordGoal: (scorer: TeamSide) => void;
   /** Replaces the penalty shootout state (used by the shootout overlay). */
   setShootout: (shootout: ShootoutState) => void;
+  /** Sets the shootout-only difficulty. */
+  setPenaltyLevel: (penaltyLevel: PenaltyLevel) => void;
   /** Starts a standalone penalty shootout from the menu. */
   startShootout: () => void;
   /** Sets which clubs are playing. Call before kickoff, from the menu. */
@@ -208,6 +212,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastTouch: "home",
   bookings: [],
   shootout: initShootout(),
+  penaltyLevel: DEFAULT_PENALTY_LEVEL,
 
   homeClubId: DEFAULT_HOME_CLUB_ID,
   awayClubId: DEFAULT_AWAY_CLUB_ID,
@@ -232,6 +237,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastScorer: scorer,
     })),
   setShootout: (shootout) => set({ shootout }),
+  setPenaltyLevel: (penaltyLevel) => set({ penaltyLevel }),
   startShootout: () =>
     set({
       score: { home: 0, away: 0 },
