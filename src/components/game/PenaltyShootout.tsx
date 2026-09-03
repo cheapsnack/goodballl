@@ -4,7 +4,12 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
-import { SetPiece3DScene, type SetPieceKick } from "./SetPiece3DScene";
+import {
+  DEFAULT_GOAL_RECT,
+  SetPiece3DScene,
+  type GoalRect,
+  type SetPieceKick,
+} from "./SetPiece3DScene";
 import {
   applyPenalty,
   keeperGuess,
@@ -34,15 +39,16 @@ const OUTCOME_LABEL: Record<PenaltyOutcome, string> = {
   miss: "MISSED!",
 };
 
-/** Geometry of the goal inside the scene box, in % of the box. */
-const GOAL = { left: 14, right: 86, top: 6, height: 52 } as const;
-const GOAL_FLOOR = 100 - (GOAL.top + GOAL.height); // bottom% of the goal line
 const SPOT = { x: 50, y: 7 }; // penalty spot, bottom%
 
-/** Where an in-goal aim/dive point sits in scene coordinates. */
-const toScene = (p: PenaltyAim) => ({
-  x: 50 + p.x * ((GOAL.right - GOAL.left) / 2) * 0.92,
-  y: GOAL_FLOOR + Math.max(0, Math.min(1, p.y)) * (GOAL.height - 8),
+/**
+ * Where an in-goal aim/dive point sits in scene coordinates. The goal rect is
+ * measured from the 3D scene each resize, so the flat overlay always sits on
+ * the posts you can actually see.
+ */
+const toScene = (r: GoalRect, p: PenaltyAim) => ({
+  x: (r.left + r.right) / 2 + p.x * ((r.right - r.left) / 2) * 0.92,
+  y: r.floor + Math.max(0, Math.min(1, p.y)) * (r.bar - r.floor) * 0.88,
 });
 
 type BallPose = { x: number; y: number; scale: number; ms: number };
@@ -65,12 +71,16 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const homeClub = getClub(useGameStore((s) => s.homeClubId));
   const awayClub = getClub(useGameStore((s) => s.awayClubId));
 
+  const [goalRect, setGoalRect] = useState<GoalRect>(DEFAULT_GOAL_RECT);
+  const rectRef = useRef(goalRect);
+  rectRef.current = goalRect;
+
   const [aim, setAim] = useState<PenaltyAim>({ x: 0, y: 0.45 });
   const [power, setPower] = useState(0);
   const [ball, setBall] = useState<BallPose>(ballAtSpot);
   const [keeper, setKeeper] = useState<{ x: number; y: number; tilt: number }>({
     x: 50,
-    y: GOAL_FLOOR,
+    y: DEFAULT_GOAL_RECT.floor,
     tilt: 0,
   });
   const [outcome, setOutcome] = useState<PenaltyOutcome | null>(null);
@@ -123,7 +133,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
       powerRef.current = 0;
 
       // Keeper commits the instant the ball is struck.
-      const dive = toScene(guess);
+      const r = rectRef.current;
+      const dive = toScene(r, guess);
       setKeeper({ x: dive.x, y: dive.y, tilt: guess.x < -0.12 ? -70 : guess.x > 0.12 ? 70 : 0 });
 
       // Ball flight: the target depends on what actually happens to it.
@@ -131,11 +142,11 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         shot === "miss"
           ? {
               x: 50 + kickAim.x * 62,
-              y: GOAL_FLOOR + Math.max(kickAim.y, 0.4) * (GOAL.height + 26),
+              y: r.floor + Math.max(kickAim.y, 0.4) * (r.bar - r.floor + 26),
             }
           : shot === "saved"
             ? dive
-            : toScene(kickAim);
+            : toScene(r, kickAim);
       setBall({ x: target.x, y: target.y, scale: 0.55, ms: flight });
       // Hand the same numbers to the 3D scene so its ball flies the identical
       // path (no bend on a penalty) and the keeper dives within the flight.
@@ -156,11 +167,11 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
           setNetShake(true);
           after(260, () => setNetShake(false));
           // Ball drops into the back of the net.
-          setBall((b) => ({ ...b, y: Math.max(GOAL_FLOOR + 2, b.y - 12), scale: 0.5, ms: 320 }));
+          setBall((b) => ({ ...b, y: Math.max(r.floor + 2, b.y - 12), scale: 0.5, ms: 320 }));
         } else if (shot === "saved") {
           // Punched clear — away to the side the keeper dived from.
           const side = dive.x < 50 ? -1 : 1;
-          setBall({ x: 50 + side * 46, y: GOAL_FLOOR - 6, scale: 0.8, ms: 460 });
+          setBall({ x: 50 + side * 46, y: Math.max(2, r.floor - 6), scale: 0.8, ms: 460 });
         }
       });
 
@@ -172,7 +183,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         setBall(ballAtSpot());
         setKick3d(null);
 
-        setKeeper({ x: 50, y: GOAL_FLOOR, tilt: 0 });
+        setKeeper({ x: 50, y: r.floor, tilt: 0 });
         busy.current = false;
         if (next.winner) playWhistle();
       });
@@ -273,7 +284,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const homeGoals = shootoutScore(shootout.home);
   const awayGoals = shootoutScore(shootout.away);
   const takerClub = takerSide === "home" ? homeClub : awayClub;
-  const reticle = toScene(aim);
+  const reticle = toScene(goalRect, aim);
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col items-center justify-center overflow-y-auto bg-[#0b1410]/97 px-4 py-6 text-background">
@@ -353,6 +364,7 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
           keeperDiveTarget={kick3d?.keeperTarget ?? null}
           kick={kick3d}
           showBall={false}
+          onGoalRect={setGoalRect}
         />
 
         {/* Mown stripes overlay — purely cosmetic, sits above the 3D scene */}
@@ -409,9 +421,9 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         </div>
         <div className="relative h-4 w-full overflow-hidden rounded-full bg-background/15">
           <div
-            className="h-full rounded-full transition-[width] duration-75"
+            className="h-full rounded-full"
             style={{
-              width: `${power * 100}%`,
+              width: power > 0 ? `${Math.max(3, power * 100)}%` : "0%",
               // One gradient across the whole track: the fill starts green and
               // only warms up as it approaches full power.
               backgroundImage: "linear-gradient(90deg,#63d68a 0%,#a8e05a 45%,#f5c518 72%,#e83a3a 100%)",
