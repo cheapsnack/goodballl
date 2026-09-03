@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { clone as cloneSkeleton } from "three/examples/jsm/utils/SkeletonUtils.js";
@@ -52,37 +52,85 @@ export type SetPieceKick = {
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
+/** Net mesh: a fine grid, so it reads as netting rather than a flat pane. */
+function Net({
+  w,
+  h,
+  cells = 26,
+}: {
+  w: number;
+  h: number;
+  cells?: number;
+}) {
+  const geo = useMemo(() => {
+    const rows = Math.max(3, Math.round((cells * h) / w));
+    return new THREE.PlaneGeometry(w, h, cells, rows);
+  }, [w, h, cells]);
+  return (
+    <mesh geometry={geo}>
+      <meshBasicMaterial
+        color="#f2fbff"
+        transparent
+        opacity={0.32}
+        side={THREE.DoubleSide}
+        wireframe
+      />
+    </mesh>
+  );
+}
+
+const NET_D = 1.9; // how deep the net runs behind the line
+
 function GoalNet() {
+  const half = GOAL_W / 2;
   return (
     <group position={[0, 0, 0]}>
-      {/* Left post */}
-      <mesh position={[-GOAL_W / 2, GOAL_H / 2, 0]}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
-      </mesh>
-      {/* Right post */}
-      <mesh position={[GOAL_W / 2, GOAL_H / 2, 0]}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
-      </mesh>
-      {/* Crossbar */}
+      {/* Posts + crossbar — thicker, so the frame has real presence */}
+      {[-half, half].map((x) => (
+        <mesh key={x} position={[x, GOAL_H / 2, 0]} castShadow>
+          <cylinderGeometry args={[POST_R, POST_R, GOAL_H, 16]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.05} />
+        </mesh>
+      ))}
       <mesh position={[0, GOAL_H, 0]} rotation-z={Math.PI / 2}>
-        <cylinderGeometry args={[POST_R, POST_R, GOAL_W + POST_R * 2, 8]} />
-        <meshStandardMaterial color="#ffffff" roughness={0.4} />
+        <cylinderGeometry args={[POST_R, POST_R, GOAL_W + POST_R * 2, 16]} />
+        <meshStandardMaterial color="#ffffff" roughness={0.35} metalness={0.05} />
       </mesh>
-      {/* Net back */}
-      <mesh position={[0, GOAL_H / 2, -1.2]}>
-        <planeGeometry args={[GOAL_W, GOAL_H]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.18} side={THREE.DoubleSide} wireframe />
+
+      {/* Back stanchions */}
+      {[-half, half].map((x) => (
+        <mesh key={`s${x}`} position={[x, (GOAL_H * 0.55) / 2, -NET_D]}>
+          <cylinderGeometry args={[POST_R * 0.6, POST_R * 0.6, GOAL_H * 0.55, 10]} />
+          <meshStandardMaterial color="#eef4f8" roughness={0.5} />
+        </mesh>
+      ))}
+
+      {/* Netting: back, roof and both sides */}
+      <group position={[0, GOAL_H * 0.275, -NET_D]}>
+        <Net w={GOAL_W} h={GOAL_H * 0.55} />
+      </group>
+      <group position={[0, GOAL_H, -NET_D / 2]} rotation-x={-Math.PI / 2 - 0.34}>
+        <Net w={GOAL_W} h={NET_D * 1.08} />
+      </group>
+      {[-half, half].map((x) => (
+        <group key={`n${x}`} position={[x, GOAL_H / 2, -NET_D / 2]} rotation-y={Math.PI / 2}>
+          <Net w={NET_D} h={GOAL_H} cells={12} />
+        </group>
+      ))}
+
+      {/* Goal line + shadow patch under the frame */}
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.004, 0]}>
+        <planeGeometry args={[GOAL_W + 6, 0.12]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.55} />
       </mesh>
-      {/* Net top */}
-      <mesh position={[0, GOAL_H, -0.6]} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[GOAL_W, 1.2]} />
-        <meshStandardMaterial color="#ffffff" transparent opacity={0.18} side={THREE.DoubleSide} wireframe />
+      <mesh rotation-x={-Math.PI / 2} position={[0, 0.002, -NET_D / 2]}>
+        <planeGeometry args={[GOAL_W, NET_D]} />
+        <meshBasicMaterial color="#0b1f12" transparent opacity={0.28} />
       </mesh>
     </group>
   );
 }
+
 
 /**
  * The struck ball. Its path is derived from the same numbers the 2D outcome
@@ -336,6 +384,90 @@ function Wall({
   );
 }
 
+// ─── camera fitting ───────────────────────────────────────────────────────────
+
+/** Where the goal lands on screen, in % of the scene box (bottom-origin y). */
+export type GoalRect = { left: number; right: number; floor: number; bar: number };
+
+/** Fallback used by the 2D overlays before the 3D scene reports its framing. */
+export const DEFAULT_GOAL_RECT: GoalRect = { left: 14, right: 86, floor: 30, bar: 78 };
+
+/** How wide the goal should be, as a share of the scene box, and its floor line. */
+const FIT_WIDTH = 78;
+const FIT_FLOOR = 26;
+const MAX_BAR = 90;
+
+/**
+ * Frames the goal so it fills the box at any aspect ratio, then reports exactly
+ * where the posts, floor and crossbar landed. The 2D overlays (reticle, ball,
+ * keeper) place themselves from that rect, so the flat and the 3D layers agree
+ * whatever the screen size — which is what used to drift on phones.
+ */
+function FitGoal({ onRect }: { onRect?: ((r: GoalRect) => void) | undefined }) {
+  const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const size = useThree((s) => s.size);
+
+  useEffect(() => {
+    const project = (x: number, y: number) => {
+      const v = new THREE.Vector3(x, y, 0).project(camera);
+      return { x: (v.x * 0.5 + 0.5) * 100, y: (v.y * 0.5 + 0.5) * 100 };
+    };
+    const measure = (fov: number, lookY: number): GoalRect => {
+      camera.fov = fov;
+      camera.aspect = size.width / Math.max(1, size.height);
+      camera.position.set(0, CAM_Y, CAM_Z);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(0, lookY, 0);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      const l = project(-GOAL_W / 2, 0);
+      const r = project(GOAL_W / 2, 0);
+      const t = project(0, GOAL_H);
+      return { left: l.x, right: r.x, floor: l.y, bar: t.y };
+    };
+
+    /** Widest fov that makes the goal `target`% wide, with the floor on its line. */
+    const solve = (targetWidth: number) => {
+      let fov = 40;
+      let lookY = 0;
+      for (let pass = 0; pass < 3; pass++) {
+        // fov: narrower fov -> wider goal, so bisect on a decreasing function.
+        let lo = 8;
+        let hi = 80;
+        for (let i = 0; i < 26; i++) {
+          const mid = (lo + hi) / 2;
+          const m = measure(mid, lookY);
+          if (m.right - m.left > targetWidth) lo = mid;
+          else hi = mid;
+        }
+        fov = (lo + hi) / 2;
+        // look height: looking higher pushes the floor down the screen.
+        let ly = -4;
+        let hy = 6;
+        for (let i = 0; i < 26; i++) {
+          const mid = (ly + hy) / 2;
+          const m = measure(fov, mid);
+          if (m.floor > FIT_FLOOR) ly = mid;
+          else hy = mid;
+        }
+        lookY = (ly + hy) / 2;
+      }
+      return { fov, lookY, rect: measure(fov, lookY) };
+    };
+
+    let best = solve(FIT_WIDTH);
+    // On tall/narrow boxes the full-width fit pushes the bar off the top —
+    // step back until the whole frame is comfortably inside the view.
+    for (let w = FIT_WIDTH; best.rect.bar > MAX_BAR && w > 30; w -= 4) {
+      best = solve(w);
+    }
+    measure(best.fov, best.lookY);
+    onRect?.(best.rect);
+  }, [camera, size.width, size.height, onRect]);
+
+  return null;
+}
+
 // ─── main exported components ─────────────────────────────────────────────────
 
 export type SetPiece3DSceneProps = {
@@ -359,7 +491,29 @@ export type SetPiece3DSceneProps = {
    * 2D overlay, whose flight reads more smoothly at this scene size.
    */
   showBall?: boolean | undefined;
+  /** Reports where the goal landed on screen so the 2D overlay can match it. */
+  onGoalRect?: ((r: GoalRect) => void) | undefined;
 };
+
+/** Six-yard box and the front edge of the penalty area, drawn on the turf. */
+function BoxLines() {
+  const line = (w: number, d: number, x: number, z: number) => (
+    <mesh rotation-x={-Math.PI / 2} position={[x, 0.004, z]}>
+      <planeGeometry args={[w, d]} />
+      <meshBasicMaterial color="#ffffff" transparent opacity={0.32} />
+    </mesh>
+  );
+  return (
+    <group>
+      {line(16.5, 0.11, 0, 16.5)}
+      {line(0.11, 16.5, -8.25, 8.25)}
+      {line(0.11, 16.5, 8.25, 8.25)}
+      {line(11, 0.1, 0, 5.5)}
+      {line(0.1, 5.5, -5.5, 2.75)}
+      {line(0.1, 5.5, 5.5, 2.75)}
+    </group>
+  );
+}
 
 /**
  * POV scene for penalty and free kick: camera sits at the penalty spot
@@ -374,6 +528,7 @@ export function SetPiece3DScene({
   keeperDiveTarget = null,
   kick = null,
   showBall = false,
+  onGoalRect,
 }: SetPiece3DSceneProps) {
   return (
     <div
@@ -389,24 +544,41 @@ export function SetPiece3DScene({
         dpr={[1, 1.5]}
         camera={{ position: [0, CAM_Y, CAM_Z], fov: 40, near: 0.1, far: 60 }}
         gl={{ antialias: true, alpha: false }}
-        style={{ background: "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)" }}
+        style={{ background: "linear-gradient(#16321f 0%, #1d4128 45%, #275534 100%)" }}
       >
-        <color attach="background" args={["#1e4a2c"]} />
-        <ambientLight intensity={0.65} />
-        <directionalLight position={[4, 8, 6]} intensity={1.6} />
-        <hemisphereLight args={["#c8e8ff", "#1a4025", 0.5]} />
+        <color attach="background" args={["#17331f"]} />
+        <fog attach="fog" args={["#17331f", 26, 46]} />
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[6, 12, 8]} intensity={1.7} />
+        <directionalLight position={[-6, 6, 4]} intensity={0.5} color="#bcd8ff" />
+        <hemisphereLight args={["#cfe9ff", "#1a4025", 0.55]} />
+        <FitGoal onRect={onGoalRect} />
 
-        {/* Pitch surface */}
+
+        {/* Pitch surface + mown stripes for depth */}
         <mesh rotation-x={-Math.PI / 2} position={[0, 0, 3]} receiveShadow>
-          <planeGeometry args={[30, 30]} />
-          <meshStandardMaterial color="#245c2a" roughness={0.9} />
+          <planeGeometry args={[40, 40]} />
+          <meshStandardMaterial color="#245c2a" roughness={0.95} />
+        </mesh>
+        {Array.from({ length: 10 }, (_, i) => (
+          <mesh
+            key={i}
+            rotation-x={-Math.PI / 2}
+            position={[0, 0.001, -3 + i * 2.4]}
+            visible={i % 2 === 0}
+          >
+            <planeGeometry args={[40, 2.4]} />
+            <meshBasicMaterial color="#2b6b32" transparent opacity={0.55} />
+          </mesh>
+        ))}
+
+        {/* Six-yard box, penalty box front edge and the spot */}
+        <BoxLines />
+        <mesh rotation-x={-Math.PI / 2} position={[0, 0.006, CAM_Z - 0.05]}>
+          <circleGeometry args={[0.11, 16]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.8} />
         </mesh>
 
-        {/* Penalty spot */}
-        <mesh rotation-x={-Math.PI / 2} position={[0, 0.005, CAM_Z - 0.05]}>
-          <circleGeometry args={[0.08, 12]} />
-          <meshStandardMaterial color="#ffffff" opacity={0.7} transparent />
-        </mesh>
 
         {/* Goal frame */}
         <GoalNet />

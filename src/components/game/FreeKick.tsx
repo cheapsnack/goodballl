@@ -4,7 +4,12 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
-import { SetPiece3DScene, type SetPieceKick } from "./SetPiece3DScene";
+import {
+  DEFAULT_GOAL_RECT,
+  SetPiece3DScene,
+  type GoalRect,
+  type SetPieceKick,
+} from "./SetPiece3DScene";
 import type { PenaltyAim } from "../../game/logic/penalties";
 import {
   applyFreeKick,
@@ -30,17 +35,18 @@ const OUTCOME_LABEL: Record<FreeKickOutcome, string> = {
   miss: "WIDE!",
 };
 
-/** Goal geometry inside the scene box, in % of the box. */
-const GOAL = { left: 16, right: 84, top: 6, height: 50 } as const;
-const GOAL_FLOOR = 100 - (GOAL.top + GOAL.height);
 const SPOT = { x: 50, y: 5 };
-/** The wall sits between the spot and the goal, so a little above the spot. */
-const WALL_Y = GOAL_FLOOR - 9;
 
-const toScene = (p: PenaltyAim) => ({
-  x: 50 + p.x * ((GOAL.right - GOAL.left) / 2) * 0.92,
-  y: GOAL_FLOOR + Math.max(0, Math.min(1, p.y)) * (GOAL.height - 8),
+/**
+ * Goal-space -> screen. The rect is measured from the 3D scene, so the flat
+ * ball, reticle and keeper always line up with the posts on screen.
+ */
+const toScene = (r: GoalRect, p: PenaltyAim) => ({
+  x: (r.left + r.right) / 2 + p.x * ((r.right - r.left) / 2) * 0.92,
+  y: r.floor + Math.max(0, Math.min(1, p.y)) * (r.bar - r.floor) * 0.88,
 });
+/** The wall sits between the spot and the goal, so a little above the spot. */
+const wallY = (r: GoalRect) => Math.max(4, r.floor - 9);
 
 type BallPose = { x: number; y: number; scale: number; ms: number; curve: number };
 const ballAtSpot = (): BallPose => ({ x: SPOT.x, y: SPOT.y, scale: 1, ms: 0, curve: 0 });
@@ -62,11 +68,15 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
   const [wallSide, setWallSide] = useState<-1 | 1>(-1);
   const wall = buildWall(wallSide, fkLevel);
 
+  const [goalRect, setGoalRect] = useState<GoalRect>(DEFAULT_GOAL_RECT);
+  const rectRef = useRef(goalRect);
+  rectRef.current = goalRect;
+
   const [aim, setAim] = useState<PenaltyAim>({ x: 0.3, y: 0.5 });
   const [curve, setCurve] = useState(0);
   const [power, setPower] = useState(0);
   const [ball, setBall] = useState<BallPose>(ballAtSpot);
-  const [keeper, setKeeper] = useState({ x: 50, y: GOAL_FLOOR, tilt: 0 });
+  const [keeper, setKeeper] = useState({ x: 50, y: DEFAULT_GOAL_RECT.floor, tilt: 0 });
   const [outcome, setOutcome] = useState<FreeKickOutcome | null>(null);
   const [kickTrigger, setKickTrigger] = useState(false);
   /** The kick handed to the 3D scene — driven by the same free-kick maths. */
@@ -111,17 +121,21 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
       setPower(0);
       powerRef.current = 0;
 
-      const dive = toScene(guess);
+      const r = rectRef.current;
+      const dive = toScene(r, guess);
       setKeeper({ x: dive.x, y: dive.y, tilt: guess.x < -0.12 ? -70 : guess.x > 0.12 ? 70 : 0 });
 
       const target =
         shot === "miss"
-          ? { x: 50 + kickAim.x * 60, y: GOAL_FLOOR + Math.max(kickAim.y, 0.4) * (GOAL.height + 24) }
+          ? {
+              x: 50 + kickAim.x * 60,
+              y: r.floor + Math.max(kickAim.y, 0.4) * (r.bar - r.floor + 24),
+            }
           : shot === "wall"
-            ? { x: toScene({ x: wall.x, y: 0 }).x, y: WALL_Y + 6 }
+            ? { x: toScene(r, { x: wall.x, y: 0 }).x, y: wallY(r) + 6 }
             : shot === "saved"
               ? dive
-              : toScene(kickAim);
+              : toScene(r, kickAim);
       const flightMs = shot === "wall" ? Math.round(flight * 0.5) : flight;
       setBall({ x: target.x, y: target.y, scale: 0.55, ms: flightMs, curve: kickCurve });
       // The 3D ball uses the same aim, bend and flight time, so its curve and
@@ -142,10 +156,10 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         if (shot === "goal") {
           setNetShake(true);
           after(260, () => setNetShake(false));
-          setBall((b) => ({ ...b, y: Math.max(GOAL_FLOOR + 2, b.y - 10), scale: 0.5, ms: 320 }));
+          setBall((b) => ({ ...b, y: Math.max(r.floor + 2, b.y - 10), scale: 0.5, ms: 320 }));
         } else if (shot === "saved") {
           const side = dive.x < 50 ? -1 : 1;
-          setBall({ x: 50 + side * 44, y: GOAL_FLOOR - 4, scale: 0.8, ms: 460, curve: 0 });
+          setBall({ x: 50 + side * 44, y: Math.max(2, r.floor - 4), scale: 0.8, ms: 460, curve: 0 });
         } else if (shot === "wall") {
           setBall((b) => ({ ...b, y: SPOT.y + 4, scale: 0.9, ms: 420, curve: 0 }));
         }
@@ -159,7 +173,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
         setCurve(0);
         setBall(ballAtSpot());
         setKick3d(null);
-        setKeeper({ x: 50, y: GOAL_FLOOR, tilt: 0 });
+        setKeeper({ x: 50, y: r.floor, tilt: 0 });
         setWallSide((s) => (s === -1 ? 1 : -1));
         busy.current = false;
         if (next.done) playWhistle();
@@ -249,7 +263,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
 
 
   const goals = freeKickScore(set.results);
-  const reticle = toScene(aim);
+  const reticle = toScene(goalRect, aim);
 
   const restart = () => {
     setSet(initFreeKickSet());
@@ -350,6 +364,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           keeperDiveTarget={kick3d?.keeperTarget ?? null}
           kick={kick3d}
           showBall={false}
+          onGoalRect={setGoalRect}
         />
 
         {/* Mown stripes overlay */}
@@ -373,10 +388,11 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
               const pxX = ((e.clientX - rect.left) / rect.width) * 100;
               const pxY = ((rect.bottom - e.clientY) / rect.height) * 100; // bottom=0
               const ax = Math.max(-1, Math.min(1,
-                (pxX - 50) / ((GOAL.right - GOAL.left) / 2 * 0.92)
+                (pxX - (goalRect.left + goalRect.right) / 2) /
+                  (((goalRect.right - goalRect.left) / 2) * 0.92)
               ));
               const ay = Math.max(0, Math.min(1,
-                (pxY - GOAL_FLOOR) / (GOAL.height - 8)
+                (pxY - goalRect.floor) / ((goalRect.bar - goalRect.floor) * 0.88)
               ));
               setAim({ x: ax, y: ay });
             }}
@@ -386,10 +402,11 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
               const pxX = ((e.clientX - rect.left) / rect.width) * 100;
               const pxY = ((rect.bottom - e.clientY) / rect.height) * 100;
               const ax = Math.max(-1, Math.min(1,
-                (pxX - 50) / ((GOAL.right - GOAL.left) / 2 * 0.92)
+                (pxX - (goalRect.left + goalRect.right) / 2) /
+                  (((goalRect.right - goalRect.left) / 2) * 0.92)
               ));
               const ay = Math.max(0, Math.min(1,
-                (pxY - GOAL_FLOOR) / (GOAL.height - 8)
+                (pxY - goalRect.floor) / ((goalRect.bar - goalRect.floor) * 0.88)
               ));
               setAim({ x: ax, y: ay });
             }}
@@ -491,7 +508,7 @@ export function FreeKick({ onExit }: { onExit?: (() => void) | undefined }) {
           <div
             className="h-full rounded-full"
             style={{
-              width: `${power * 100}%`,
+              width: power > 0 ? `${Math.max(3, power * 100)}%` : "0%",
               // Gradient spans the whole track, so the green zone is always
               // visible at the start of the fill instead of the bar jumping
               // straight to a solid warning colour.
