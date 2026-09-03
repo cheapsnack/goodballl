@@ -313,8 +313,13 @@ export type SetPiece3DSceneProps = {
   wallSide?: -1 | 1 | undefined;
   /** When non-null, triggers the keeper dive animation toward this normalised goal position. */
   keeperDiveTarget?: { x: number; y: number } | null | undefined;
-  /** The kick in flight — drives the 3D ball path. */
+  /** The kick in flight — drives the 3D ball path and keeper dive timing. */
   kick?: SetPieceKick | null | undefined;
+  /**
+   * Render the ball in 3D. Off by default: the mini-games draw the ball as a
+   * 2D overlay, whose flight reads more smoothly at this scene size.
+   */
+  showBall?: boolean | undefined;
 };
 
 /**
@@ -328,6 +333,7 @@ export function SetPiece3DScene({
   wallSide = -1,
   keeperDiveTarget = null,
   kick = null,
+  showBall = false,
 }: SetPiece3DSceneProps) {
   return (
     <div
@@ -375,8 +381,8 @@ export function SetPiece3DScene({
           diveMs={kick?.flightMs ?? 500}
         />
 
-        {/* Ball in flight */}
-        <Ball kick={kick} />
+        {/* Ball in flight (opt-in — the 2D overlay ball is the default) */}
+        {showBall && <Ball kick={kick} />}
       </Canvas>
     </div>
   );
