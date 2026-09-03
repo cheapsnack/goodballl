@@ -259,7 +259,7 @@ function Keeper({
     const e = 1 - Math.pow(1 - t, 2.2);
     // Dive distance is capped at the keeper's reach from the 2D tuning, so a
     // dive can never cover ground the outcome maths says he can't reach.
-    const reach = FREEKICK_TUNING.keeperReach * (GOAL_W / 2) * 2;
+    const reach = reach2d * (GOAL_W / 2) * 2;
     const rawX = diveRef.current.x * (GOAL_W / 2) * 0.92;
     const tx = THREE.MathUtils.clamp(rawX, -reach, reach);
     const ty = Math.max(0, Math.min(diveRef.current.y * GOAL_H * 0.55, GOAL_H * 0.55));
