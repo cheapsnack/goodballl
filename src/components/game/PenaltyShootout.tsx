@@ -13,10 +13,14 @@ import {
   type PenaltyOutcome,
 } from "../../game/logic/penalties";
 
-/** How fast the reticle slides across the goal, in normalized units per second. */
-const AIM_SPEED = { x: 1.5, y: 1.1 };
+/**
+ * How fast the reticle slides across the goal, in normalized units per
+ * second. Slowed down from the first pass — the reticle used to shoot past
+ * the corner you were aiming for before you could release.
+ */
+const AIM_SPEED = { x: 0.85, y: 0.65 };
 /** Seconds of holding Space to reach full power. */
-const POWER_TIME = 0.8;
+const POWER_TIME = 1.1;
 /** How long the result of a kick stays on screen before the next taker. */
 const RESULT_HOLD = 1.4;
 
@@ -49,7 +53,9 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   aimRef.current = aim;
 
   const isHomeTurn = shootout.turn === "home" && !shootout.winner;
-  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * 0.55;
+  // Keeper reads your aim far less well than an outfield AI reads a shot —
+  // the shootout is meant to be winnable, not a coin flip against a wall.
+  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * 0.3;
 
   /** Resolves one kick and, after a beat, hands over to the next taker. */
   const take = useCallback(
@@ -143,6 +149,14 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col items-center justify-center bg-[#0b1410]/95 px-4 text-background">
+      {onExit && (
+        <button
+          onClick={onExit}
+          className="absolute right-4 top-4 rounded-md border border-background/30 px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-background/70 transition-colors hover:bg-background/10"
+        >
+          End game
+        </button>
+      )}
       <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
         Penalty Shootout
       </div>
