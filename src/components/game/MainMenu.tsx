@@ -146,7 +146,7 @@ export function MainMenu({
   const minutes = Math.round((MATCH_TUNING.periodSeconds * MATCH_TUNING.periods) / 60);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-[#0d1a12] text-background">
+    <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-[#0d1a12] text-background md:items-center">
       {/* Faint pitch stripes behind the panel keep the sports feel pre-kickoff. */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.18]"
@@ -155,8 +155,8 @@ export function MainMenu({
             "repeating-linear-gradient(90deg, #2f7a3f 0 60px, #256533 60px 120px)",
         }}
       />
-      <div className="relative w-full max-w-md px-8 py-10 text-center">
-        <div className="text-[11px] font-bold uppercase tracking-[0.42em] text-background/50">
+      <div className="relative w-full max-w-md px-6 py-6 text-center sm:px-8 sm:py-10">
+        <div className="text-[10px] font-bold uppercase tracking-[0.42em] text-background/50 sm:text-[11px]">
           {mode === "ai"
             ? "Kickoff Mode"
             : mode === "local2p"
@@ -167,12 +167,12 @@ export function MainMenu({
                   ? "Free Kick Practice"
                   : "Play vs Friend"}
         </div>
-        <h1 className="mt-3 font-sans text-6xl font-black uppercase leading-none tracking-tight text-background">
+        <h1 className="mt-2 font-sans text-5xl font-black uppercase leading-[0.9] tracking-tight text-background sm:mt-3 sm:text-6xl">
           Arcade
           <br />
           <span className="text-[#63d68a]">Football</span>
         </h1>
-        <p className="mx-auto mt-4 max-w-xs text-sm leading-relaxed text-background/60">
+        <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-background/60 sm:mt-4">
           {MATCH_TUNING.periods} halves · {minutes} minutes · 11 v 11 · switch players with Q.
         </p>
 
