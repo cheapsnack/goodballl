@@ -21,10 +21,6 @@ import {
  * second. Slowed down from the first pass — the reticle used to shoot past
  * the corner you were aiming for before you could release.
  */
-/** Defaults; the live values come from the selected shootout level. */
-const AIM_SPEED = PENALTY_LEVEL_TUNING.normal.aimSpeed;
-/** Seconds of holding Space to reach full power, at Normal. */
-const POWER_TIME = PENALTY_LEVEL_TUNING.normal.powerTime;
 /** Ball flight, in ms, at zero power — a hard strike arrives quicker. */
 const FLIGHT_MS = { slow: 620, fast: 320 };
 /** How long the finished kick stays on screen before the next taker. */
