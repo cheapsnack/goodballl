@@ -168,29 +168,49 @@ function Ball({ kick }: { kick: SetPieceKick | null }) {
   );
 }
 
+/**
+ * Clones the rigged footballer and tints only the kit meshes, leaving skin,
+ * hair and boots as authored — painting every mesh one colour was what made
+ * the figures read as flat placeholder silhouettes.
+ */
+function useKitClone(scene: THREE.Object3D, jersey: string, shorts: string) {
+  const clonedRef = useRef<THREE.Group | null>(null);
+  if (!clonedRef.current) {
+    const clone = cloneSkeleton(scene) as THREE.Group;
+    clone.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const mat = (mesh.material as THREE.MeshStandardMaterial).clone();
+      if (mesh.name === "Player_Jersey") mat.color.set(jersey);
+      else if (mesh.name === "Player_Shorts" || mesh.name === "Player_Socks") mat.color.set(shorts);
+      mesh.material = mat;
+      mesh.castShadow = true;
+    });
+    clonedRef.current = clone;
+  }
+  return clonedRef.current;
+}
+
 /** Animated goalkeeper — stands on line, dives when `diveTarget` is set. */
 function Keeper({
   color,
   diveTarget,
   diveMs,
+  reach,
 }: {
   color: string;
   diveTarget: { x: number; y: number } | null;
   diveMs: number;
+  /** Keeper reach in goal half-widths — comes from the same tuning the 2D outcome uses. */
+  reach: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const { scene, animations } = useGLTF(MODEL_PATH);
-  const clonedRef = useRef<THREE.Group | null>(null);
+  // Keepers wear a distinct kit, never the outfield colour.
+  const clonedScene = useKitClone(scene, "#e8f24a", "#1b1f24");
+  const clonedRef = { current: clonedScene };
+  void color;
 
-  if (!clonedRef.current) {
-    clonedRef.current = cloneSkeleton(scene) as THREE.Group;
-    clonedRef.current.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
-      mat.color.set(color);
-    });
-  }
 
   const { actions } = useAnimations(animations, groupRef);
   const diveRef = useRef<{ x: number; y: number } | null>(null);
