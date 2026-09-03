@@ -25,6 +25,49 @@ export type PenaltyAim = { x: number; y: number };
 
 export type PenaltyOutcome = "goal" | "saved" | "miss";
 
+/** Shootout-only difficulty, chosen in the shootout screen itself. */
+export type PenaltyLevel = "easy" | "normal" | "hard";
+export const PENALTY_LEVELS: PenaltyLevel[] = ["easy", "normal", "hard"];
+export const DEFAULT_PENALTY_LEVEL: PenaltyLevel = "normal";
+
+/**
+ * Per-level shootout feel:
+ *  - `keeperAccuracy` — how much the keeper's dive is biased toward your aim.
+ *  - `keeperReachScale` — how far he can stretch from that dive.
+ *  - `powerTime` — seconds of holding Space to fill the meter (the power
+ *    window: longer means it's easier to stop where you want).
+ *  - `aimSpeed` — reticle travel, in normalized units per second.
+ */
+export const PENALTY_LEVEL_TUNING: Record<
+  PenaltyLevel,
+  { keeperAccuracy: number; keeperReachScale: number; powerTime: number; aimSpeed: { x: number; y: number }; label: string; blurb: string }
+> = {
+  easy: {
+    keeperAccuracy: 0.1,
+    keeperReachScale: 0.78,
+    powerTime: 1.5,
+    aimSpeed: { x: 0.65, y: 0.5 },
+    label: "Easy",
+    blurb: "Keeper guesses blind · slow power meter",
+  },
+  normal: {
+    keeperAccuracy: 0.3,
+    keeperReachScale: 1,
+    powerTime: 1.1,
+    aimSpeed: { x: 0.85, y: 0.65 },
+    label: "Normal",
+    blurb: "Balanced dive and power window",
+  },
+  hard: {
+    keeperAccuracy: 0.55,
+    keeperReachScale: 1.2,
+    powerTime: 0.7,
+    aimSpeed: { x: 1.35, y: 1.05 },
+    label: "Hard",
+    blurb: "Keeper reads you · tight power window",
+  },
+};
+
 export type ShootoutState = {
   /** 1-based round; rounds above PENALTY_TUNING.rounds are sudden death */
   round: number;
@@ -74,12 +117,16 @@ export function resolvePenalty(
   aim: PenaltyAim,
   power: number,
   guess: PenaltyAim,
+  /** shootout difficulty multiplier on the keeper's reach */
+  reachScale = 1,
 ): PenaltyOutcome {
   if (Math.abs(aim.x) > PENALTY_TUNING.missThreshold || aim.y > PENALTY_TUNING.missThreshold) {
     return "miss";
   }
   const reach =
-    PENALTY_TUNING.keeperReach * (1 - PENALTY_TUNING.powerPenalty * Math.max(0, Math.min(1, power)));
+    PENALTY_TUNING.keeperReach *
+    reachScale *
+    (1 - PENALTY_TUNING.powerPenalty * Math.max(0, Math.min(1, power)));
   const dist = Math.abs(aim.x - guess.x) + 0.6 * Math.abs(aim.y - guess.y);
   return dist <= reach ? "saved" : "goal";
 }
