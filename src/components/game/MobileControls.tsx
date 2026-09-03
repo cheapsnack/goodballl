@@ -26,10 +26,17 @@ type Props = {
  * frame via `useTouchInput().getInput()`.
  */
 export function MobileControls({ stateRef, compact }: Props) {
+  const [isTouch, setIsTouch] = useState(false);
   const [joyCentre, setJoyCentre] = useState<{ x: number; y: number } | null>(null);
   const [joyKnob, setJoyKnob] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [held, setHeld] = useState<Set<string>>(new Set());
   const joystickId = useRef<number | null>(null);
+
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    const touchPoints = navigator.maxTouchPoints > 0 || "ontouchstart" in window;
+    setIsTouch(coarse && touchPoints);
+  }, []);
 
   const BTN_SIZE = compact ? 52 : 62;
   const JOY_RADIUS = compact ? 52 : 62;
