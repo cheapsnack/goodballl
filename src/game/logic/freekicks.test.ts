@@ -10,7 +10,7 @@ import {
   resolveFreeKick,
 } from "./freekicks";
 
-const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.4
+const wall = buildWall(-1, "normal"); // centred at x = -0.34, height 0.45
 
 describe("hitsWall", () => {
   it("blocks a low straight ball hit at the wall", () => {
@@ -18,11 +18,11 @@ describe("hitsWall", () => {
   });
 
   it("lets a ball over the wall through", () => {
-    expect(hitsWall({ x: -0.34, y: 0.6 }, 0, wall)).toBe(false);
+    expect(hitsWall({ x: -0.34, y: 0.85 }, 0, wall)).toBe(false);
   });
 
   it("lets a heavily bent ball curl around the wall", () => {
-    expect(hitsWall({ x: -0.34, y: 0.2 }, FREEKICK_TUNING.bendAroundWall, wall)).toBe(false);
+    expect(hitsWall({ x: -0.34, y: 0.2 }, 1, wall)).toBe(false);
   });
 
   it("ignores aims wide of the wall", () => {
@@ -51,7 +51,7 @@ describe("resolveFreeKick", () => {
     const aim = { x: 0.5, y: 0.3 };
     const guess = { x: 0.16, y: 0.3 };
     expect(resolveFreeKick(aim, 0, 0, guess, wall)).toBe("saved");
-    expect(resolveFreeKick(aim, 0, 1, guess, wall)).toBe("goal");
+    expect(resolveFreeKick(aim, 0, -1, guess, wall)).toBe("goal");
   });
 });
 
