@@ -59,8 +59,8 @@ export const STRIKE_TUNING = {
     maxSpeed: 24,
     /** vertical:horizontal ratio with the loft modifier held */
     loftRatio: 0.5,
-    /** vertical:horizontal ratio for a driven shot */
-    baseLoftRatio: 0.05,
+    /** vertical:horizontal ratio for a driven shot — enough lift to beat a keeper, not a floor pass */
+    baseLoftRatio: 0.4,
   },
   pass: {
     /** tap-pass at 8 m/s — usable for short balls to a nearby teammate */

@@ -32,7 +32,8 @@ import {
 } from "../../game/logic/ai/outfield";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { possessionBallPosition, tryCapture, trySteal, type CaptureCandidate, type Possession } from "../../game/logic/possession";
-import { detectGoal, isPlayFrozen, MATCH_TUNING, type TeamSide } from "../../game/logic/match";
+import { detectGoal, isPlayFrozen, MATCH_TUNING, periodLength, TOTAL_PERIODS, type TeamSide } from "../../game/logic/match";
+import { initShootout } from "../../game/logic/penalties";
 import {
   clearSpaceAroundRestart,
   detectOutOfBounds,
@@ -358,8 +359,8 @@ export function MatchScene() {
     // celebration/kickoff shot stays alive.
     if (isPlayFrozen(store.matchStatus) || store.matchStatus === "kickoff") {
       const remaining = store.statusTimer - dt;
-      if (store.matchStatus === "fulltime") {
-        // Match over: hold everything.
+      if (store.matchStatus === "fulltime" || store.matchStatus === "penalties") {
+        // Match over (or decided from the spot): hold everything.
       } else if (remaining > 0) {
         if (store.matchStatus === "restart" && store.restart) {
           // Keep everyone moving into position during the restart countdown
@@ -530,6 +531,8 @@ export function MatchScene() {
         });
         playWhistle();
         playStartRef.current = state.clock.elapsedTime;
+      } else if (store.matchStatus === "halftime" || store.matchStatus === "extratime") {
+        // Break over: fresh kickoff shape, next period starts from 0.
         store.resetPositions();
         useGameStore.setState({
           period: store.period + 1,
@@ -538,6 +541,7 @@ export function MatchScene() {
           statusTimer: MATCH_TUNING.kickoffPause,
         });
       }
+
 
       const s2 = useGameStore.getState();
       const controlled = s2.homeOutfield[s2.controlledIndex] ?? s2.homeOutfield[0]!;
@@ -651,10 +655,15 @@ export function MatchScene() {
       // For shots: nudge toward goal centre. For passes: lock onto the nearest
       // teammate in the facing cone so passes feel responsive even with imprecise aim.
       let strikeTarget: { x: number; z: number } | undefined;
+      let receiverIndex: number | null = null;
       if (prevCharge.action === "shoot") {
         strikeTarget = { x: -HOME_DEFEND_SIDE * PITCH.halfLength, z: 0 };
       } else if (prevCharge.action === "pass") {
-        strikeTarget = nearestTeammateInCone(controlled, store.homeOutfield, controlledIndex);
+        const receiver = nearestTeammateInCone(controlled, store.homeOutfield, controlledIndex);
+        if (receiver) {
+          strikeTarget = { x: receiver.x, z: receiver.z };
+          receiverIndex = receiver.index;
+        }
       }
       const strike = resolveStrike(controlled, prevCharge, strikeTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
@@ -669,12 +678,14 @@ export function MatchScene() {
       };
       playKick(prevCharge.power);
       bumpAnim(homeRefs.current[controlledIndex] ?? null, "kickCount");
-      // Auto-switch to the nearest teammate after a pass, like FIFA/PES.
+      // Auto-switch to the RECEIVER after a pass (not whoever is nearest the
+      // kicked ball — that's usually the passer, standing right on top of it).
       if (prevCharge.action === "pass") {
-        const next = nearestToBallIndex(store.homeOutfield, ball);
+        const next = receiverIndex ?? nearestToBallIndex(store.homeOutfield, ball);
         if (next !== controlledIndex) useGameStore.setState({ controlledIndex: next });
       }
     }
+
 
     if (
       awayControlled &&
@@ -683,10 +694,15 @@ export function MatchScene() {
       (restartLock === null || restartLock === "away")
     ) {
       let awayStrikeTarget: { x: number; z: number } | undefined;
+      let awayReceiverIndex: number | null = null;
       if (prevAwayCharge.action === "shoot") {
         awayStrikeTarget = { x: -AWAY_DEFEND_SIDE * PITCH.halfLength, z: 0 };
       } else if (prevAwayCharge.action === "pass") {
-        awayStrikeTarget = nearestTeammateInCone(awayControlled, store.awayOutfield, awayControlledIndex ?? 0);
+        const receiver = nearestTeammateInCone(awayControlled, store.awayOutfield, awayControlledIndex ?? 0);
+        if (receiver) {
+          awayStrikeTarget = { x: receiver.x, z: receiver.z };
+          awayReceiverIndex = receiver.index;
+        }
       }
       const strike = resolveStrike(awayControlled, prevAwayCharge, awayStrikeTarget);
       ball = applyImpulse(ball, strike.direction, strike.speed, strike.lift);
@@ -701,6 +717,11 @@ export function MatchScene() {
       };
       playKick(prevAwayCharge.power);
       bumpAnim(awayRefs.current[awayControlledIndex ?? 0] ?? null, "kickCount");
+      // Hand control of the away side to the pass receiver too.
+      if (prevAwayCharge.action === "pass" && awayReceiverIndex !== null && awayReceiverIndex !== awayControlledIndex) {
+        awayControlledIndex = awayReceiverIndex;
+        useGameStore.setState({ awayControlledIndex: awayReceiverIndex });
+      }
     }
 
     // --- home outfield (AI teammates + the controlled player) ---
@@ -1117,15 +1138,26 @@ export function MatchScene() {
       return;
     }
 
-    if (matchTime >= MATCH_TUNING.periodSeconds) {
+    const thisPeriod = periodLength(store.period);
+    if (matchTime >= thisPeriod) {
       playWhistle();
+      const level = store.score.home === store.score.away;
+      // Regulation ends level → extra time. Extra time ends level → penalties.
+      let nextStatus: "halftime" | "extratime" | "penalties" | "fulltime";
+      if (store.period < MATCH_TUNING.periods) nextStatus = "halftime";
+      else if (store.period === MATCH_TUNING.periods) nextStatus = level ? "extratime" : "fulltime";
+      else if (store.period < TOTAL_PERIODS) nextStatus = "halftime";
+      else nextStatus = level ? "penalties" : "fulltime";
+
       useGameStore.setState({
-        matchTime: MATCH_TUNING.periodSeconds,
-        matchStatus: store.period >= MATCH_TUNING.periods ? "fulltime" : "halftime",
+        matchTime: thisPeriod,
+        matchStatus: nextStatus,
         statusTimer: MATCH_TUNING.halfTimePause,
+        ...(nextStatus === "penalties" ? { shootout: initShootout() } : {}),
       });
       maybeBroadcastState();
       return;
+
     }
 
     useGameStore.setState({
@@ -1265,18 +1297,19 @@ function LivePlayerLabels({
 
 /**
  * Finds the nearest teammate in front of `passer` (within a 130° forward cone).
- * Returns the position of the best target, or undefined if none found.
- * Used for pass assist so the ball curves toward a real receiving player.
+ * Returns their index and position, or undefined if none found. Used for pass
+ * assist (the ball curves toward a real receiver) and for handing control to
+ * that receiver after the pass.
  */
 function nearestTeammateInCone(
   passer: Kinematics,
   teammates: Kinematics[],
   selfIndex: number,
-): { x: number; z: number } | undefined {
+): { index: number; x: number; z: number } | undefined {
   const facingX = Math.sin(passer.heading);
   const facingZ = -Math.cos(passer.heading);
   const minAlignment = 0.15; // cos(~81°) — generous forward half
-  let best: { x: number; z: number } | undefined;
+  let best: { index: number; x: number; z: number } | undefined;
   let bestDist = Infinity;
 
   teammates.forEach((t, i) => {
@@ -1289,11 +1322,12 @@ function nearestTeammateInCone(
     if (alignment < minAlignment) return; // behind the passer
     if (dist < bestDist) {
       bestDist = dist;
-      best = { x: t.position.x, z: t.position.z };
+      best = { index: i, x: t.position.x, z: t.position.z };
     }
   });
   return best;
 }
+
 
 /**
  * Shared goalkeeper drive step for either side.

@@ -13,6 +13,7 @@ import { DEFAULT_AWAY_CLUB_ID, DEFAULT_HOME_CLUB_ID, getClub } from "../data/clu
 import type { Restart } from "../logic/restarts";
 import type { Possession } from "../logic/possession";
 import type { Booking } from "../logic/bookings";
+import { initShootout, type ShootoutState } from "../logic/penalties";
 
 export const PITCH = {
   length: FIELD.length,
@@ -127,6 +128,8 @@ type GameState = {
   possession: Possession | null;
   /** Every card shown in this match, in chronological order. Bottom-of-screen HUD reads from this. */
   bookings: Booking[];
+  /** Penalty shootout progress — only meaningful while matchStatus is "penalties". */
+  shootout: ShootoutState;
 
   /** --- club selection, set from the menu before kickoff --- */
   homeClubId: string;
@@ -148,6 +151,10 @@ type GameState = {
   setMatchStatus: (status: MatchStatus, statusTimer?: number) => void;
   setMatchTime: (matchTime: number) => void;
   recordGoal: (scorer: TeamSide) => void;
+  /** Replaces the penalty shootout state (used by the shootout overlay). */
+  setShootout: (shootout: ShootoutState) => void;
+  /** Starts a standalone penalty shootout from the menu. */
+  startShootout: () => void;
   /** Sets which clubs are playing. Call before kickoff, from the menu. */
   setClubs: (homeClubId: string, awayClubId: string) => void;
   setDifficulty: (difficulty: Difficulty) => void;
@@ -200,6 +207,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastScorer: null,
   lastTouch: "home",
   bookings: [],
+  shootout: initShootout(),
 
   homeClubId: DEFAULT_HOME_CLUB_ID,
   awayClubId: DEFAULT_AWAY_CLUB_ID,
@@ -223,6 +231,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       statusTimer: MATCH_TUNING.goalCelebration,
       lastScorer: scorer,
     })),
+  setShootout: (shootout) => set({ shootout }),
+  startShootout: () =>
+    set({
+      score: { home: 0, away: 0 },
+      matchTime: 0,
+      period: 1,
+      matchStatus: "penalties",
+      statusTimer: 0,
+      bookings: [],
+      shootout: initShootout(),
+    }),
   setClubs: (homeClubId, awayClubId) => set({ homeClubId, awayClubId }),
   setDifficulty: (difficulty) => set({ difficulty }),
   setMentality: (mentality) => set({ mentality }),
@@ -252,5 +271,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastScorer: null,
       lastTouch: "home",
       bookings: [],
+      shootout: initShootout(),
     }),
 }));

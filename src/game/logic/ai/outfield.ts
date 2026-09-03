@@ -20,7 +20,7 @@ export const OUTFIELD_TUNING = {
    * entire back line towards the ball each frame. The mentality system
    * applies its own additional per-line shift on top.
    */
-  zonalTrackX: 0.18,
+  zonalTrackX: 0.1,
   /** z-tracking is fine — stays wide, just tracks the corridor */
   zonalTrackZ: 0.45,
   /** dead zone before a zonal player bothers repositioning */
@@ -41,7 +41,7 @@ export const OUTFIELD_TUNING = {
    * the rest hold shape. Raising this above 1 means the second-nearest also
    * chases, which reduces the blob by keeping more bodies in formation.
    */
-  presserCount: 2,
+  presserCount: 1,
 } as const;
 
 /**

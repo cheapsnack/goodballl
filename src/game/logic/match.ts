@@ -4,10 +4,16 @@ import { FIELD, goalLineX } from "./field";
 
 /** All match-structure numbers live here. */
 export const MATCH_TUNING = {
-  /** number of periods in a match */
+  /** number of regulation periods in a match */
   periods: 2,
-  /** length of each period in real (wall-clock) seconds — 2 min per half = 4 min total */
-  periodSeconds: 120,
+  /** length of each regulation period in real (wall-clock) seconds — 3 min per half */
+  periodSeconds: 180,
+  /** how many displayed seconds pass per real second (3 real min = 45 displayed min) */
+  clockScale: 15,
+  /** number of extra-time periods played when regulation ends level */
+  extraPeriods: 2,
+  /** length of each extra-time period in real seconds — 1 min = 15 displayed min */
+  extraPeriodSeconds: 60,
   /** how long the GOAL! banner holds before the reset */
   goalCelebration: 3.2,
   /** how long the kickoff freeze lasts before play resumes */
@@ -15,8 +21,11 @@ export const MATCH_TUNING = {
   /** how long the half-time break holds */
   halfTimePause: 3,
   /** how long a throw-in/corner/goal-kick pauses before going live */
-  restartPause: 0.55,
+  restartPause: 0.9,
 } as const;
+
+/** Total number of periods once extra time is included. */
+export const TOTAL_PERIODS = MATCH_TUNING.periods + MATCH_TUNING.extraPeriods;
 
 export type MatchStatus =
   | "kickoff"
@@ -24,12 +33,29 @@ export type MatchStatus =
   | "goal"
   | "restart"
   | "halftime"
+  | "extratime"
+  | "penalties"
   | "fulltime";
 
 export type Score = { home: number; away: number };
 
 /** "home" is the human (attacks +x); "away" is the AI (defends +x). */
 export type TeamSide = "home" | "away";
+
+/** Real-time length of a given 1-based period (regulation or extra time). */
+export function periodLength(period: number): number {
+  return period <= MATCH_TUNING.periods
+    ? MATCH_TUNING.periodSeconds
+    : MATCH_TUNING.extraPeriodSeconds;
+}
+
+/** Human-readable label for a period, e.g. "1st half" / "ET 1". */
+export function periodLabel(period: number): string {
+  if (period === 1) return "1st half";
+  if (period === 2) return "2nd half";
+  return `Extra time ${period - MATCH_TUNING.periods}`;
+}
+
 
 /**
  * Who scores when the ball crosses a given goal line. The human attacks the
@@ -76,11 +102,22 @@ export function formatClock(seconds: number): string {
   return `${mm}:${ss.toString().padStart(2, "0")}`;
 }
 
-/** Total clock seconds elapsed across the whole match at a given period. */
+/**
+ * Broadcast clock, in *displayed* seconds: real time is scaled up so a
+ * 3-minute half reads as 45:00, and extra-time periods continue from 90:00.
+ */
 export function displayClock(period: number, periodElapsed: number): number {
-  return (period - 1) * MATCH_TUNING.periodSeconds + periodElapsed;
+  let before = 0;
+  for (let p = 1; p < period; p++) before += periodLength(p);
+  return (before + periodElapsed) * MATCH_TUNING.clockScale;
 }
 
 /** True when physics should be frozen (celebration, break, or match over). */
 export const isPlayFrozen = (status: MatchStatus) =>
-  status === "goal" || status === "restart" || status === "halftime" || status === "fulltime";
+  status === "goal" ||
+  status === "restart" ||
+  status === "halftime" ||
+  status === "extratime" ||
+  status === "penalties" ||
+  status === "fulltime";
+

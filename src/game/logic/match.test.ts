@@ -39,7 +39,17 @@ describe("clock", () => {
     expect(formatClock(0)).toBe("0:00");
     expect(formatClock(65)).toBe("1:05");
   });
+  it("scales real seconds into match minutes", () => {
+    // 3 real minutes per half displayed as 45 minutes
+    expect(displayClock(1, 0)).toBe(0);
+    expect(displayClock(1, MATCH_TUNING.periodSeconds)).toBe(45 * 60);
+  });
   it("continues into the second half", () => {
-    expect(displayClock(2, 10)).toBe(MATCH_TUNING.periodSeconds + 10);
+    expect(displayClock(2, 10)).toBe(45 * 60 + 10 * MATCH_TUNING.clockScale);
+  });
+  it("continues into extra time past 90", () => {
+    expect(displayClock(3, 0)).toBe(90 * 60);
+    expect(displayClock(4, 0)).toBe(105 * 60);
   });
 });
+
