@@ -198,9 +198,10 @@ export function SetPiece3DScene({
         shadows={false}
         dpr={[1, 1.5]}
         camera={{ position: [0, CAM_Y, CAM_Z], fov: 40, near: 0.1, far: 60 }}
-        gl={{ antialias: true, alpha: true }}
-        style={{ background: "transparent" }}
+        gl={{ antialias: true, alpha: false }}
+        style={{ background: "linear-gradient(#1b3a27 0%, #22482f 45%, #2c5a3a 100%)" }}
       >
+        <color attach="background" args={["#1e4a2c"]} />
         <ambientLight intensity={0.65} />
         <directionalLight position={[4, 8, 6]} intensity={1.6} />
         <hemisphereLight args={["#c8e8ff", "#1a4025", 0.5]} />

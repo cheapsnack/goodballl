@@ -315,68 +315,21 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
           }
         />
 
-        {/* Mown stripes */}
+        {/* Mown stripes overlay — purely cosmetic, sits above the 3D scene */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-20"
+          className="pointer-events-none absolute inset-0 opacity-10"
           style={{
             backgroundImage:
               "repeating-linear-gradient(0deg, rgba(255,255,255,0.16) 0 14px, transparent 14px 28px)",
+            zIndex: 1,
           }}
         />
-
-        {/* Goal frame + net */}
-        <div
-          className="absolute rounded-t-sm border-[6px] border-b-0 border-background/90"
-          style={{
-            left: `${GOAL.left}%`,
-            right: `${100 - GOAL.right}%`,
-            top: `${GOAL.top}%`,
-            height: `${GOAL.height}%`,
-            background: "rgba(9,20,14,0.55)",
-            transform: netShake ? "scale(1.012)" : "scale(1)",
-            transition: "transform 120ms ease-out",
-          }}
-        >
-          <div
-            className="absolute inset-0 opacity-30"
-            style={{
-              backgroundImage:
-                "linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px)",
-              backgroundSize: "16px 16px",
-            }}
-          />
-        </div>
-
-        {/* Six-yard hint + penalty spot */}
-        <div
-          className="pointer-events-none absolute h-[2px] bg-background/25"
-          style={{ left: "8%", right: "8%", bottom: `${GOAL_FLOOR}%` }}
-        />
-        <div
-          className="pointer-events-none absolute h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-background/60"
-          style={{ left: `${SPOT.x}%`, bottom: `${SPOT.y}%` }}
-        />
-
-        {/* Keeper */}
-        <div
-          className="absolute -translate-x-1/2"
-          style={{
-            left: `${keeper.x}%`,
-            bottom: `${keeper.y}%`,
-            transform: `translateX(-50%) rotate(${keeper.tilt}deg)`,
-            transition: "left 240ms cubic-bezier(.2,.7,.3,1), bottom 240ms cubic-bezier(.2,.7,.3,1), transform 240ms ease-out",
-          }}
-        >
-          <div className="h-4 w-4 rounded-full bg-[#f7c948] shadow" />
-          <div className="mx-auto h-10 w-7 rounded-sm bg-[#f7c948] shadow-lg" />
-          <div className="mx-auto h-4 w-5 rounded-b-sm bg-[#1f2a24]" />
-        </div>
 
         {/* Aim reticle (human taker only, before the strike) */}
         {isHomeTurn && !outcome && !busy.current && (
           <div
             className="pointer-events-none absolute h-8 w-8 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-dashed border-[#63d68a]"
-            style={{ left: `${reticle.x}%`, bottom: `${reticle.y}%` }}
+            style={{ left: `${reticle.x}%`, bottom: `${reticle.y}%`, zIndex: 2, boxShadow: "0 0 8px rgba(99,214,138,0.5)" }}
           />
         )}
 
@@ -390,12 +343,13 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
             transition: ball.ms
               ? `left ${ball.ms}ms cubic-bezier(.3,.1,.5,1), bottom ${ball.ms}ms cubic-bezier(.3,.1,.5,1), transform ${ball.ms}ms linear`
               : "none",
+            zIndex: 2,
           }}
         />
 
         {/* Outcome stamp */}
         {outcome && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center" style={{ zIndex: 3 }}>
             <span
               className="rounded-md bg-[#0d1a12]/85 px-6 py-2 font-sans text-3xl font-black tracking-[0.1em]"
               style={{ color: outcome === "goal" ? "#63d68a" : "#ff7a6a" }}
