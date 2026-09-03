@@ -9,7 +9,7 @@ import { Ball } from "./Ball";
 import { PITCH_LENGTH } from "./pitchTexture";
 
 import { useKeyboardInput, LOCAL_P1_KEYS, LOCAL_P2_KEYS, SOLO_KEYS } from "../../hooks/useKeyboardInput";
-import { AWAY_DEFEND_SIDE, HOME_DEFEND_SIDE, PITCH, useGameStore } from "../../game/store/useGameStore";
+import type { PlayerInput } from "../../game/types";import { AWAY_DEFEND_SIDE, HOME_DEFEND_SIDE, PITCH, useGameStore } from "../../game/store/useGameStore";
 import { clampToPitch, paramsFromAttributes, stepMovement } from "../../game/logic/movement";
 import { applyImpulse, BALL_RADIUS, stepBall, STRIKE_TUNING } from "../../game/logic/ballPhysics";
 import { canStrike, resolveStrike, stepCharge } from "../../game/logic/striking";
@@ -67,7 +67,7 @@ const IDLE_GUEST_INPUT: GuestInputPayload = {
   tackle: false,
 };
 
-export function MatchScene() {
+export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInput }) {
   // Clubs, networking role and room are chosen on the menu before this
   // component ever mounts, so a one-time read here (not a subscription) is
   // enough — none of them change mid-match.
@@ -299,7 +299,24 @@ export function MatchScene() {
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const store = useGameStore.getState();
-    const keys = input.current;
+    // Merge keyboard + touch input — whichever has a non-zero axis or pressed
+    // button wins. This means the same code path handles both PC and mobile.
+    const kbd = input.current;
+    const tch = getTouchInput ? getTouchInput() : kbd;
+    const mag = Math.hypot(tch.x, tch.z);
+    const keys: PlayerInput = mag > 0.05 || tch.shoot || tch.pass || tch.tackle || tch.switchPlayer
+      ? {
+          x: mag > 0.05 ? tch.x : kbd.x,
+          z: mag > 0.05 ? tch.z : kbd.z,
+          sprint: tch.sprint || kbd.sprint,
+          shoot: tch.shoot || kbd.shoot,
+          pass: tch.pass || kbd.pass,
+          loft: tch.loft || kbd.loft,
+          cameraToggle: kbd.cameraToggle,
+          switchPlayer: tch.switchPlayer || kbd.switchPlayer,
+          tackle: tch.tackle || kbd.tackle,
+        }
+      : kbd;
 
     // --- camera toggle (always local — each screen picks its own view) ---
     let cameraMode = store.cameraMode;

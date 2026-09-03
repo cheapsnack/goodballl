@@ -8,12 +8,17 @@ import { MatchHud } from "./MatchHud";
 import { PlayerNamesPanel } from "./PlayerNamesPanel";
 import { SoundToggle } from "./SoundToggle";
 import { PenaltyShootout } from "./PenaltyShootout";
+import { MobileControls } from "./MobileControls";
+import { useTouchInput } from "../../hooks/useTouchInput";
 import { useGameStore } from "../../game/store/useGameStore";
 
 const SKY = "#8fc3e8";
 
 export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
   const inShootout = useGameStore((s) => s.matchStatus === "penalties");
+  // Hoist touch input here so MobileControls (outside Canvas) and MatchScene
+  // (inside Canvas) share the exact same stateRef.
+  const { stateRef: touchStateRef, getInput: getTouchInput } = useTouchInput();
 
   return (
     <div className="fixed inset-0">
@@ -47,7 +52,7 @@ export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
           />
         </Environment>
 
-        <MatchScene />
+        <MatchScene getTouchInput={getTouchInput} />
         <BallTrail />
       </Canvas>
       <MatchHud onExit={onExit} />
@@ -55,6 +60,8 @@ export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
       <SoundToggle />
       <PowerBar />
       <ControlsHint />
+      {/* On-screen controller — hidden on large-screen (desktop) by CSS, visible on mobile */}
+      <MobileControls stateRef={touchStateRef} />
       {/* Drawn after extra time — the shootout takes over the screen. */}
       {inShootout && <PenaltyShootout onExit={onExit} />}
     </div>
