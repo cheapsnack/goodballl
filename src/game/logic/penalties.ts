@@ -10,13 +10,14 @@ export const PENALTY_TUNING = {
   rounds: 5,
   /**
    * How far (in normalized goal units) a keeper can still reach from where
-   * they guessed. 1 unit = half the goal width.
+   * they guessed. 1 unit = half the goal width. Kept deliberately modest —
+   * an arcade shootout should reward a decent corner, not punish it.
    */
-  keeperReach: 0.55,
+  keeperReach: 0.46,
   /** how much of the keeper's reach a full-power strike takes away */
-  powerPenalty: 0.3,
+  powerPenalty: 0.45,
   /** aiming beyond this (either axis) puts the ball off target */
-  missThreshold: 0.94,
+  missThreshold: 0.98,
 } as const;
 
 /** Aim inside the goal mouth: x -1 (left post) … 1 (right post), y 0 (ground) … 1 (crossbar). */
