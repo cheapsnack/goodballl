@@ -3,6 +3,7 @@ import { useGameStore } from "../../game/store/useGameStore";
 import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
+import { ExitConfirm } from "./ExitConfirm";
 import {
   applyPenalty,
   keeperGuess,
