@@ -4,7 +4,7 @@ import { getClub } from "../../game/data/clubs";
 import { DIFFICULTY_TUNING } from "../../game/logic/ai/difficulty";
 import { playKick, playWhistle } from "../../game/logic/audio";
 import { ExitConfirm } from "./ExitConfirm";
-import { SetPiece3DScene } from "./SetPiece3DScene";
+import { SetPiece3DScene, type SetPieceKick } from "./SetPiece3DScene";
 import {
   applyPenalty,
   keeperGuess,
@@ -78,6 +78,9 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   /** Flipped to trigger the 3D run-up animation each kick. */
   const [kickTrigger, setKickTrigger] = useState(false);
+  /** The kick handed to the 3D scene — same maths as the 2D resolution. */
+  const [kick3d, setKick3d] = useState<SetPieceKick | null>(null);
+  const kickSeq = useRef(1);
 
   const held = useRef<Set<string>>(new Set());
   const aimRef = useRef(aim);
@@ -319,14 +322,8 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
         {/* 3D POV scene — goal with animated keeper */}
         <SetPiece3DScene
           defenderColor={awayClub.primaryColor}
-          keeperDiveTarget={
-            keeper.tilt !== 0 || keeper.x !== 50
-              ? {
-                  x: (keeper.x - 50) / 36,
-                  y: Math.max(0, (keeper.y - GOAL_FLOOR) / (GOAL.height - 8)),
-                }
-              : null
-          }
+          keeperDiveTarget={kick3d?.keeperTarget ?? null}
+          kick={kick3d}
         />
 
         {/* Mown stripes overlay — purely cosmetic, sits above the 3D scene */}
