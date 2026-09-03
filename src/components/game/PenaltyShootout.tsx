@@ -53,7 +53,9 @@ export function PenaltyShootout({ onExit }: { onExit?: (() => void) | undefined 
   aimRef.current = aim;
 
   const isHomeTurn = shootout.turn === "home" && !shootout.winner;
-  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * 0.55;
+  // Keeper reads your aim far less well than an outfield AI reads a shot —
+  // the shootout is meant to be winnable, not a coin flip against a wall.
+  const keeperAccuracy = DIFFICULTY_TUNING[difficulty].shotAccuracy * 0.3;
 
   /** Resolves one kick and, after a beat, hands over to the next taker. */
   const take = useCallback(
