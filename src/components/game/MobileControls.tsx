@@ -225,7 +225,7 @@ export function MobileControls({ stateRef, compact }: Props) {
             bottom: BTN_SIZE + 4,
           }}
         >
-          ⚽ Shoot
+          Shoot
         </div>
 
         {/* Pass — left of diamond */}
@@ -237,7 +237,7 @@ export function MobileControls({ stateRef, compact }: Props) {
             bottom: BTN_SIZE + 4,
           }}
         >
-          → Pass
+          Pass
         </div>
 
         {/* Tackle — bottom of diamond */}
@@ -249,7 +249,7 @@ export function MobileControls({ stateRef, compact }: Props) {
             bottom: 0,
           }}
         >
-          ✕ Slide
+          Slide
         </div>
 
         {/* Switch player — top of diamond */}
@@ -261,24 +261,8 @@ export function MobileControls({ stateRef, compact }: Props) {
             bottom: (BTN_SIZE + 4) * 2,
           }}
         >
-          ⇄ Swap
+          Swap
         </div>
-      </div>
-
-      {/* Sprint indicator strip — shows when joystick is in sprint zone */}
-      <div
-        style={{
-          position: "absolute",
-          left: PAD,
-          bottom: PAD - 14,
-          fontSize: 9,
-          fontFamily: "monospace",
-          color: "rgba(255,255,255,0.3)",
-          letterSpacing: "0.1em",
-          pointerEvents: "none",
-        }}
-      >
-        PUSH WIDE TO SPRINT
       </div>
       </div>
     </div>
