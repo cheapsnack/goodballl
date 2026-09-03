@@ -24,19 +24,20 @@ export const FREEKICK_TUNING = {
   /** attempts in one practice set */
   attempts: 5,
   /** keeper reach from where he guessed, in goal half-widths */
-  keeperReach: 0.42,
+  keeperReach: 0.44,
   /** how much of the keeper's reach a full-power strike takes away */
-  powerPenalty: 0.45,
+  powerPenalty: 0.5,
   /** how much full bend takes away from the keeper's reach (he's deceived) */
-  curveDeception: 0.3,
+  curveDeception: 0.35,
   /** aiming beyond this on either axis puts the ball off target */
   missThreshold: 0.97,
   /**
-   * Bend, in goal half-widths, that a full curve input adds to the ball's
-   * flight around the wall. Below this the ball is still "through" the wall
-   * line rather than around it.
+   * Bend, in goal half-widths, that a full curve input shifts the ball's path
+   * at the wall line. Partial curve shifts it proportionally.
    */
-  bendAroundWall: 0.45,
+  bendAroundWall: 0.55,
+  /** fraction of the final aim height the ball has reached at the wall line */
+  riseAtWall: 0.72,
 } as const;
 
 export type FreeKickLevel = "easy" | "normal" | "hard";
