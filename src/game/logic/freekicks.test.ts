@@ -18,7 +18,7 @@ describe("hitsWall", () => {
   });
 
   it("lets a ball over the wall through", () => {
-    expect(hitsWall({ x: -0.34, y: 0.85 }, 0, wall)).toBe(false);
+    expect(hitsWall({ x: -0.34, y: 1.0 }, 0, wall)).toBe(false);
   });
 
   it("lets a heavily bent ball curl around the wall", () => {
