@@ -105,6 +105,9 @@ type GameState = {
   /** 1-based period index */
   period: number;
   matchStatus: MatchStatus;
+  /** True while the options overlay is open — freezes the whole simulation. */
+  paused: boolean;
+  setPaused: (paused: boolean) => void;
   /** seconds remaining before the current non-playing status */
   statusTimer: number;
   /** who scored the goal currently being celebrated */
@@ -207,6 +210,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   matchTime: 0,
   period: 1,
   matchStatus: "kickoff",
+  paused: false,
+  setPaused: (paused) => set({ paused }),
   statusTimer: MATCH_TUNING.kickoffPause,
   lastScorer: null,
   lastTouch: "home",

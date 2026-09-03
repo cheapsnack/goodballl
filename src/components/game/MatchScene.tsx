@@ -301,6 +301,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
   useFrame((state, rawDelta) => {
     const dt = Math.min(rawDelta, 0.05);
     const store = useGameStore.getState();
+    // Options overlay open — freeze the entire simulation (and the camera).
+    if (store.paused) return;
     // Merge keyboard + touch input — whichever has a non-zero axis or pressed
     // button wins. This means the same code path handles both PC and mobile.
     const kbd = input.current;
