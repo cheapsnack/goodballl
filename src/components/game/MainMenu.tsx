@@ -146,7 +146,7 @@ export function MainMenu({
   const minutes = Math.round((MATCH_TUNING.periodSeconds * MATCH_TUNING.periods) / 60);
 
   return (
-    <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-[#0d1a12] text-background sm:items-center">
+    <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-[#0d1a12] text-background md:items-center">
       {/* Faint pitch stripes behind the panel keep the sports feel pre-kickoff. */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.18]"
