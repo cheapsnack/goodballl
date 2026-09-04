@@ -308,6 +308,37 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     const store = useGameStore.getState();
     // Options overlay open — freeze the entire simulation (and the camera).
     if (store.paused) return;
+
+    // --- sent-off bookkeeping: a red card takes that player off the pitch ---
+    const sentHome = new Set<number>();
+    const sentAway = new Set<number>();
+    for (const b of store.bookings) {
+      if (b.color !== "red") continue;
+      (b.team === "home" ? sentHome : sentAway).add(b.playerIndex);
+    }
+    sentOffRef.current = { home: sentHome, away: sentAway };
+    /** Where a dismissed player stands: off the pitch, behind their own touchline. */
+    const benchBody = (team: TeamSide, i: number): Kinematics => ({
+      position: {
+        x: -10 + i * 2,
+        y: 0,
+        z: team === "home" ? -(PITCH.halfWidth + 4) : PITCH.halfWidth + 4,
+      },
+      velocity: { x: 0, y: 0, z: 0 },
+      heading: team === "home" ? Math.PI : 0,
+    });
+    /** First still-on-the-pitch player nearest the ball, for auto-switching after a dismissal. */
+    const firstAvailable = (out: Set<number>, count: number) => {
+      for (let i = 0; i < count; i++) if (!out.has(i)) return i;
+      return 0;
+    };
+    if (sentHome.has(store.controlledIndex)) {
+      const next = firstAvailable(sentHome, store.homeOutfield.length);
+      useGameStore.setState({ controlledIndex: next });
+    }
+    if (store.awayControlledIndex !== null && sentAway.has(store.awayControlledIndex)) {
+      useGameStore.setState({ awayControlledIndex: firstAvailable(sentAway, store.awayOutfield.length) });
+    }
     // Merge keyboard + touch input — whichever has a non-zero axis or pressed
     // button wins. This means the same code path handles both PC and mobile.
     const kbd = input.current;
