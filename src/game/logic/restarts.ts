@@ -81,6 +81,8 @@ export function detectOutOfBounds(
 export function restartLabel(type: RestartType): string {
   if (type === "throwin") return "Throw-in";
   if (type === "corner") return "Corner";
+  if (type === "freekick") return "Free Kick";
+  if (type === "penalty") return "Penalty!";
   return "Goal Kick";
 }
 
