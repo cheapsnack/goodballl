@@ -1,4 +1,4 @@
-# Arcade Football
+# Goodball - Arcade Football
 
 A 3D arcade football (soccer) game: 11 v 11 matches, penalty shootouts, free-kick
 practice and online 1 v 1, built with React Three Fiber on TanStack Start.

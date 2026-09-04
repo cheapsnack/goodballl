@@ -167,10 +167,10 @@ export function MainMenu({
                   ? "Free Kick Practice"
                   : "Play vs Friend"}
         </div>
-        <h1 className="mt-2 break-words py-1 font-sans text-[clamp(2.25rem,13vw,3rem)] font-black uppercase leading-[1.05] tracking-tight text-background sm:mt-3 sm:text-6xl">
-          Arcade
+        <h1 className="mt-2 break-words py-1 font-sans text-[clamp(2rem,12vw,3rem)] font-black uppercase leading-[1.05] tracking-tight text-background sm:mt-3 sm:text-5xl">
+          Goodball
           <br />
-          <span className="text-[#63d68a]">Football</span>
+          <span className="text-[#63d68a]">Arcade Football</span>
         </h1>
 
         <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-background/60 sm:mt-4">
