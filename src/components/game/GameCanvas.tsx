@@ -6,6 +6,9 @@ import { ControlsHint } from "./ControlsHint";
 import { PowerBar } from "./PowerBar";
 import { MatchHud } from "./MatchHud";
 import { OptionsPanel } from "./OptionsPanel";
+import { MatchAlert } from "./MatchAlert";
+import { LineupIndicator } from "./LineupIndicator";
+import { SetPieceDebugOverlay } from "./SetPieceDebugOverlay";
 import { PlayerNamesPanel } from "./PlayerNamesPanel";
 import { SoundToggle } from "./SoundToggle";
 import { PenaltyShootout } from "./PenaltyShootout";
@@ -58,6 +61,9 @@ export function GameCanvas({ onExit }: { onExit?: (() => void) | undefined }) {
       </Canvas>
       <OptionsPanel />
       <MatchHud onExit={onExit} />
+      {!inShootout && <MatchAlert />}
+      {!inShootout && <LineupIndicator />}
+      {!inShootout && <SetPieceDebugOverlay />}
       {!inShootout && <PlayerNamesPanel />}
       <SoundToggle />
       <PowerBar />
