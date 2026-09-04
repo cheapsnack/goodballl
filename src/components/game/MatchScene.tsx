@@ -1297,6 +1297,15 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
         statusTimer: MATCH_TUNING.restartPause,
       });
       playWhistle();
+      if (outOfBounds.type === "corner") {
+        playAward("corner");
+        useGameStore.getState().showAlert({
+          kind: "corner",
+          title: "Corner",
+          subtitle: outOfBounds.team === "home" ? "To you" : "Against you",
+          accent: "#38bdf8",
+        });
+      }
       maybeBroadcastState();
       return;
     }
