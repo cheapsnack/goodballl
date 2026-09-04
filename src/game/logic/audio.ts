@@ -175,3 +175,58 @@ export function playCrowdGroan(): void {
   g.linearRampToValueAtTime(AUDIO_TUNING.crowdBed * 0.4, t + 1.6);
   g.linearRampToValueAtTime(AUDIO_TUNING.crowdBed, t + 3.2);
 }
+
+/**
+ * Card sting for a booking. Yellow is a single mid chirp; red is a lower,
+ * harsher double stab so a sending-off is unmistakable even without looking.
+ */
+export function playCard(color: "yellow" | "red"): void {
+  const r = live();
+  if (!r) return;
+  const { ctx, master } = r;
+  const t0 = ctx.currentTime;
+  const hits = color === "red" ? [0, 0.17] : [0];
+  const base = color === "red" ? 320 : 640;
+
+  for (const offset of hits) {
+    const t = t0 + offset;
+    const osc = ctx.createOscillator();
+    osc.type = color === "red" ? "sawtooth" : "square";
+    osc.frequency.setValueAtTime(base, t);
+    osc.frequency.exponentialRampToValueAtTime(base * 0.6, t + 0.16);
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(color === "red" ? 0.3 : 0.2, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+
+    osc.connect(gain).connect(master);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  }
+}
+
+/** Rising two-note fanfare when a corner or penalty is awarded. */
+export function playAward(kind: "corner" | "penalty" | "freekick" = "corner"): void {
+  const r = live();
+  if (!r) return;
+  const { ctx, master } = r;
+  const t0 = ctx.currentTime;
+  const notes = kind === "penalty" ? [440, 660, 880] : [520, 780];
+
+  notes.forEach((hz, i) => {
+    const t = t0 + i * 0.11;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.value = hz;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+
+    osc.connect(gain).connect(master);
+    osc.start(t);
+    osc.stop(t + 0.24);
+  });
+}
