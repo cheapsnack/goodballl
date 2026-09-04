@@ -3,7 +3,21 @@ import { BALL_RADIUS } from "./ballPhysics";
 import { FIELD, cornerSpot, goalKickSpot, throwInSpot } from "./field";
 import { scorerForGoalLine, type TeamSide } from "./match";
 
-export type RestartType = "throwin" | "corner" | "goalkick";
+export type RestartType = "throwin" | "corner" | "goalkick" | "freekick" | "penalty";
+
+/** True when (x, z) is inside the penalty area defended by `defendSide`. */
+export function isInPenaltyArea(
+  pos: { x: number; z: number },
+  defendSide: 1 | -1,
+): boolean {
+  const inDepth = pos.x * defendSide >= FIELD.halfLength - FIELD.penaltyDepth;
+  return inDepth && Math.abs(pos.z) <= FIELD.penaltyHalfWidth / 2 + FIELD.goalHalfWidth;
+}
+
+/** The penalty spot in front of the goal defended by `defendSide`. */
+export function penaltySpot(defendSide: 1 | -1): { x: number; z: number } {
+  return { x: defendSide * (FIELD.halfLength - 11), z: 0 };
+}
 
 export type Restart = {
   type: RestartType;
@@ -67,6 +81,8 @@ export function detectOutOfBounds(
 export function restartLabel(type: RestartType): string {
   if (type === "throwin") return "Throw-in";
   if (type === "corner") return "Corner";
+  if (type === "freekick") return "Free Kick";
+  if (type === "penalty") return "Penalty!";
   return "Goal Kick";
 }
 
@@ -84,6 +100,8 @@ export const RESTART_CLEARANCE: Record<RestartType, number> = {
   throwin: 3,
   corner: 8,
   goalkick: 6,
+  freekick: 6,
+  penalty: 12,
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));

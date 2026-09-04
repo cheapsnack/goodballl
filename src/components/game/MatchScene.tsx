@@ -38,6 +38,8 @@ import {
   clearSpaceAroundRestart,
   detectOutOfBounds,
   headingTo,
+  isInPenaltyArea,
+  penaltySpot,
   RESTART_CLEARANCE,
 } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
@@ -144,6 +146,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
   const broadcastTick = useRef(0);
+  /** Indices of players sent off (red card) per side — they leave the pitch. */
+  const sentOffRef = useRef({ home: new Set<number>(), away: new Set<number>() });
   /**
    * The three.js elapsedTime at the moment we last wrote the current
    * `store.matchTime` value — used to compute the wall-clock diff each frame
@@ -276,6 +280,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     s.homeOutfield.forEach((p, i) => {
       const ref = homeRefs.current[i];
       if (!ref) return;
+      // Sent-off players are removed from the field entirely.
+      ref.visible = !sentOffRef.current.home.has(i);
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
       ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
@@ -283,6 +289,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     s.awayOutfield.forEach((p, i) => {
       const ref = awayRefs.current[i];
       if (!ref) return;
+      ref.visible = !sentOffRef.current.away.has(i);
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
       ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
@@ -303,6 +310,37 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     const store = useGameStore.getState();
     // Options overlay open — freeze the entire simulation (and the camera).
     if (store.paused) return;
+
+    // --- sent-off bookkeeping: a red card takes that player off the pitch ---
+    const sentHome = new Set<number>();
+    const sentAway = new Set<number>();
+    for (const b of store.bookings) {
+      if (b.color !== "red") continue;
+      (b.team === "home" ? sentHome : sentAway).add(b.playerIndex);
+    }
+    sentOffRef.current = { home: sentHome, away: sentAway };
+    /** Where a dismissed player stands: off the pitch, behind their own touchline. */
+    const benchBody = (team: TeamSide, i: number): Kinematics => ({
+      position: {
+        x: -10 + i * 2,
+        y: 0,
+        z: team === "home" ? -(PITCH.halfWidth + 4) : PITCH.halfWidth + 4,
+      },
+      velocity: { x: 0, y: 0, z: 0 },
+      heading: team === "home" ? Math.PI : 0,
+    });
+    /** First still-on-the-pitch player nearest the ball, for auto-switching after a dismissal. */
+    const firstAvailable = (out: Set<number>, count: number) => {
+      for (let i = 0; i < count; i++) if (!out.has(i)) return i;
+      return 0;
+    };
+    if (sentHome.has(store.controlledIndex)) {
+      const next = firstAvailable(sentHome, store.homeOutfield.length);
+      useGameStore.setState({ controlledIndex: next });
+    }
+    if (store.awayControlledIndex !== null && sentAway.has(store.awayControlledIndex)) {
+      useGameStore.setState({ awayControlledIndex: firstAvailable(sentAway, store.awayOutfield.length) });
+    }
     // Merge keyboard + touch input — whichever has a non-zero axis or pressed
     // button wins. This means the same code path handles both PC and mobile.
     const kbd = input.current;
@@ -401,6 +439,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           const awayKeysNow = netRole === "host" ? guestInputRef.current : input2.current;
 
           const homeOutfield = store.homeOutfield.map((p, i) => {
+            if (sentHome.has(i)) return benchBody("home", i);
             const params = homeParams[i] ?? homeParams[0]!;
             if (i === controlledIndex) {
               return clampToPitch(stepMovement(p, keys, params, dt), PITCH.halfLength, PITCH.halfWidth);
@@ -409,6 +448,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
             return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
           });
           const awayOutfield = store.awayOutfield.map((p, i) => {
+            if (sentAway.has(i)) return benchBody("away", i);
             const params = awayParams[i] ?? awayParams[0]!;
             if (hasAwayHumanNow && i === awayControlledIndex) {
               return clampToPitch(stepMovement(p, awayKeysNow, params, dt), PITCH.halfLength, PITCH.halfWidth);
@@ -512,39 +552,79 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           const lateral = (Math.random() - 0.5) * 0.7;
           placedBall = applyImpulse(placedBall, { x: attackDir, z: lateral }, 13, 4);
         } else {
-          // Throw-in / corner: bring the taking side's controlled player to
-          // the spot and hand them the ball directly, so whoever's playing
-          // can act immediately instead of having to run over and win it.
+          // Throw-in / corner / free kick / penalty: bring the taking side's
+          // controlled player to the spot and hand them the ball directly,
+          // so whoever's playing can act immediately.
           //
           // Crucially the taker must FACE INTO the pitch: the ball is glued
           // just ahead of a possessor's heading, so facing the corner flag
           // (or the touchline) shoved the ball straight back over the line
           // and restarted the same corner/throw over and over.
-          const aimAt = type === "corner" ? { x: spot.x * 0.72, z: 0 } : { x: 0, z: 0 };
+          const attackGoalX =
+            team === "home" ? -HOME_DEFEND_SIDE * PITCH.halfLength : -AWAY_DEFEND_SIDE * PITCH.halfLength;
+          const aimAt =
+            type === "corner"
+              ? { x: attackGoalX * 0.86, z: 0 }
+              : type === "penalty" || type === "freekick"
+                ? { x: attackGoalX, z: 0 }
+                : { x: 0, z: 0 };
           const dx = aimAt.x - spot.x;
           const dz = aimAt.z - spot.z;
           const len = Math.hypot(dx, dz) || 1;
-          const setback = type === "corner" ? 1.4 : 1;
-          // Stand *behind* the ball relative to the aim direction, so the
-          // glued ball ends up between the taker and the pitch.
+          // Corners used to place the taker *outside* the ball (toward the
+          // flag), which left the glued ball less than a metre from two
+          // boundaries — one touch and it went straight back out, restarting
+          // the same corner forever. Now the taker stands a safe distance
+          // inside the pitch and the ball is glued in front of them.
+          const inset = type === "corner" ? 1.6 : -1.1;
           const takerPos = {
-            x: clamp(spot.x - (dx / len) * setback, -PITCH.halfLength + 1, PITCH.halfLength - 1),
-            z: clamp(spot.z - (dz / len) * setback, -PITCH.halfWidth + 1, PITCH.halfWidth - 1),
+            x: clamp(spot.x + (dx / len) * inset, -PITCH.halfLength + 2, PITCH.halfLength - 2),
+            z: clamp(spot.z + (dz / len) * inset, -PITCH.halfWidth + 2, PITCH.halfWidth - 2),
           };
           const takerBody: Kinematics = {
             position: { x: takerPos.x, y: 0, z: takerPos.z },
             velocity: { x: 0, y: 0, z: 0 },
             heading: headingTo(takerPos, aimAt),
           };
+          // Pick the taker: the human's player when this side is human-run,
+          // otherwise whichever available AI player is nearest the spot —
+          // without this an AI corner just sat there with nobody on it.
+          const nearestAvailable = (bodies: Kinematics[], out: Set<number>) => {
+            let best = -1;
+            let bestD = Infinity;
+            bodies.forEach((b, i) => {
+              if (out.has(i)) return;
+              const d = Math.hypot(b.position.x - spot.x, b.position.z - spot.z);
+              if (d < bestD) {
+                bestD = d;
+                best = i;
+              }
+            });
+            return best;
+          };
+          const sent = sentOffRef.current;
           if (team === "home") {
-            nextHomeOutfield = nextHomeOutfield.map((p, i) =>
-              i === store.controlledIndex ? takerBody : p,
-            );
-            possessionGrant = { team: "home", index: store.controlledIndex };
-          } else if (store.awayControlledIndex !== null) {
-            const idx = store.awayControlledIndex;
-            nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? takerBody : p));
-            possessionGrant = { team: "away", index: idx };
+            const idx = sent.home.has(store.controlledIndex)
+              ? nearestAvailable(nextHomeOutfield, sent.home)
+              : store.controlledIndex;
+            if (idx >= 0) {
+              nextHomeOutfield = nextHomeOutfield.map((p, i) => (i === idx ? takerBody : p));
+              possessionGrant = { team: "home", index: idx };
+            }
+          } else {
+            const human = store.awayControlledIndex;
+            const idx =
+              human !== null && !sent.away.has(human)
+                ? human
+                : nearestAvailable(nextAwayOutfield, sent.away);
+            if (idx >= 0) {
+              nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? takerBody : p));
+              possessionGrant = { team: "away", index: idx };
+            }
+          }
+          if (possessionGrant) {
+            const glued = possessionBallPosition(takerBody, 0);
+            placedBall = { ...placedBall, position: { x: glued.x, y: BALL_RADIUS, z: glued.z } };
           }
         }
 
@@ -761,9 +841,11 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     // zonal targeting; final ball placement (glued to whoever ends up with
     // it) happens afterward, once everyone's new position is known.
     const homePressers = presserIndices(store.homeOutfield, homeXI.map(e => e.role), store.ball, chaserRef.current.home);
+    for (const i of sentHome) homePressers.delete(i);
     chaserRef.current.home = homePressers;
     const homeGoalX = -HOME_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — home attacks here
     const homeOutfield = store.homeOutfield.map((p, i) => {
+      if (sentHome.has(i)) return benchBody("home", i);
       if (i === controlledIndex) return controlled;
 
       const shotState = homeShotState[i]!;
@@ -832,9 +914,11 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
 
     // --- away outfield (AI, except a connected guest's/local P2's player) ---
     const awayPressers = presserIndices(store.awayOutfield, awayXI.map(e => e.role), store.ball, chaserRef.current.away);
+    for (const i of sentAway) awayPressers.delete(i);
     chaserRef.current.away = awayPressers;
     const awayGoalX = -AWAY_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — away attacks here
     const awayOutfield = store.awayOutfield.map((p, i) => {
+      if (sentAway.has(i)) return benchBody("away", i);
       if (hasAwayHuman && i === awayControlledIndex && awayControlled) return awayControlled;
 
       const shotState = awayShotState[i]!;
@@ -931,14 +1015,20 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
       const minute = Math.floor(matchTime / 60) + 1;
       const booking: Booking = { team: offenderTeam, playerIndex: offenderIndex, playerName, color, minute };
       bookings = [...bookings, booking];
-      // Free kick: the fouled side gets the ball at the foul spot (clamp inside pitch).
+      // Foul inside the offender's own box → penalty from the spot.
+      // Anywhere else → a free kick to the fouled side where it happened.
+      const defendSide = offenderTeam === "home" ? HOME_DEFEND_SIDE : AWAY_DEFEND_SIDE;
+      const victimTeam: TeamSide = offenderTeam === "home" ? "away" : "home";
+      const inBox = isInPenaltyArea(foulPos, defendSide);
       const clampX = Math.max(-PITCH.halfLength + 3, Math.min(PITCH.halfLength - 3, foulPos.x));
       const clampZ = Math.max(-PITCH.halfWidth + 3, Math.min(PITCH.halfWidth - 3, foulPos.z));
       useGameStore.setState({
         bookings,
-        restart: { type: "throwin", team: offenderTeam === "home" ? "away" : "home", position: { x: clampX, z: clampZ } },
+        restart: inBox
+          ? { type: "penalty" as const, team: victimTeam, position: penaltySpot(defendSide) }
+          : { type: "freekick" as const, team: victimTeam, position: { x: clampX, z: clampZ } },
         matchStatus: "restart",
-        statusTimer: MATCH_TUNING.restartPause,
+        statusTimer: inBox ? MATCH_TUNING.restartPause + 0.8 : MATCH_TUNING.restartPause,
         possession: null,
       });
       playWhistle();
@@ -1131,12 +1221,14 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
       if (restartLock === null || restartLock === "home") {
         for (let i = 0; i < homeOutfield.length; i++) {
           if (excluded && excluded.team === "home" && excluded.index === i) continue;
+          if (sentHome.has(i)) continue;
           candidates.push({ team: "home", index: i, body: bodyOf("home", i) });
         }
       }
       if (restartLock === null || restartLock === "away") {
         for (let i = 0; i < awayOutfield.length; i++) {
           if (excluded && excluded.team === "away" && excluded.index === i) continue;
+          if (sentAway.has(i)) continue;
           candidates.push({ team: "away", index: i, body: bodyOf("away", i) });
         }
       }
