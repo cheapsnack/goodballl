@@ -100,6 +100,8 @@ export const RESTART_CLEARANCE: Record<RestartType, number> = {
   throwin: 3,
   corner: 8,
   goalkick: 6,
+  freekick: 6,
+  penalty: 12,
 };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
