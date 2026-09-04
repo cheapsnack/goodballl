@@ -55,7 +55,11 @@ describe("corners", () => {
 
   it("pushes defenders back out of the corner arc", () => {
     const spot = cornerSpot(1, 1);
-    const cleared = clearSpaceAroundRestart([body(spot.x, spot.z)], spot, RESTART_CLEARANCE.corner);
+    const cleared = clearSpaceAroundRestart(
+      [body(spot.x - 1, spot.z - 1)],
+      spot,
+      RESTART_CLEARANCE.corner,
+    );
     const d = Math.hypot(cleared[0]!.position.x - spot.x, cleared[0]!.position.z - spot.z);
     expect(d).toBeGreaterThan(RESTART_CLEARANCE.corner - 3);
   });
