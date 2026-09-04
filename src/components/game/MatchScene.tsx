@@ -512,39 +512,79 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           const lateral = (Math.random() - 0.5) * 0.7;
           placedBall = applyImpulse(placedBall, { x: attackDir, z: lateral }, 13, 4);
         } else {
-          // Throw-in / corner: bring the taking side's controlled player to
-          // the spot and hand them the ball directly, so whoever's playing
-          // can act immediately instead of having to run over and win it.
+          // Throw-in / corner / free kick / penalty: bring the taking side's
+          // controlled player to the spot and hand them the ball directly,
+          // so whoever's playing can act immediately.
           //
           // Crucially the taker must FACE INTO the pitch: the ball is glued
           // just ahead of a possessor's heading, so facing the corner flag
           // (or the touchline) shoved the ball straight back over the line
           // and restarted the same corner/throw over and over.
-          const aimAt = type === "corner" ? { x: spot.x * 0.72, z: 0 } : { x: 0, z: 0 };
+          const attackGoalX =
+            team === "home" ? -HOME_DEFEND_SIDE * PITCH.halfLength : -AWAY_DEFEND_SIDE * PITCH.halfLength;
+          const aimAt =
+            type === "corner"
+              ? { x: attackGoalX * 0.86, z: 0 }
+              : type === "penalty" || type === "freekick"
+                ? { x: attackGoalX, z: 0 }
+                : { x: 0, z: 0 };
           const dx = aimAt.x - spot.x;
           const dz = aimAt.z - spot.z;
           const len = Math.hypot(dx, dz) || 1;
-          const setback = type === "corner" ? 1.4 : 1;
-          // Stand *behind* the ball relative to the aim direction, so the
-          // glued ball ends up between the taker and the pitch.
+          // Corners used to place the taker *outside* the ball (toward the
+          // flag), which left the glued ball less than a metre from two
+          // boundaries — one touch and it went straight back out, restarting
+          // the same corner forever. Now the taker stands a safe distance
+          // inside the pitch and the ball is glued in front of them.
+          const inset = type === "corner" ? 1.6 : -1.1;
           const takerPos = {
-            x: clamp(spot.x - (dx / len) * setback, -PITCH.halfLength + 1, PITCH.halfLength - 1),
-            z: clamp(spot.z - (dz / len) * setback, -PITCH.halfWidth + 1, PITCH.halfWidth - 1),
+            x: clamp(spot.x + (dx / len) * inset, -PITCH.halfLength + 2, PITCH.halfLength - 2),
+            z: clamp(spot.z + (dz / len) * inset, -PITCH.halfWidth + 2, PITCH.halfWidth - 2),
           };
           const takerBody: Kinematics = {
             position: { x: takerPos.x, y: 0, z: takerPos.z },
             velocity: { x: 0, y: 0, z: 0 },
             heading: headingTo(takerPos, aimAt),
           };
+          // Pick the taker: the human's player when this side is human-run,
+          // otherwise whichever available AI player is nearest the spot —
+          // without this an AI corner just sat there with nobody on it.
+          const nearestAvailable = (bodies: Kinematics[], out: Set<number>) => {
+            let best = -1;
+            let bestD = Infinity;
+            bodies.forEach((b, i) => {
+              if (out.has(i)) return;
+              const d = Math.hypot(b.position.x - spot.x, b.position.z - spot.z);
+              if (d < bestD) {
+                bestD = d;
+                best = i;
+              }
+            });
+            return best;
+          };
+          const sent = sentOffRef.current;
           if (team === "home") {
-            nextHomeOutfield = nextHomeOutfield.map((p, i) =>
-              i === store.controlledIndex ? takerBody : p,
-            );
-            possessionGrant = { team: "home", index: store.controlledIndex };
-          } else if (store.awayControlledIndex !== null) {
-            const idx = store.awayControlledIndex;
-            nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? takerBody : p));
-            possessionGrant = { team: "away", index: idx };
+            const idx = sent.home.has(store.controlledIndex)
+              ? nearestAvailable(nextHomeOutfield, sent.home)
+              : store.controlledIndex;
+            if (idx >= 0) {
+              nextHomeOutfield = nextHomeOutfield.map((p, i) => (i === idx ? takerBody : p));
+              possessionGrant = { team: "home", index: idx };
+            }
+          } else {
+            const human = store.awayControlledIndex;
+            const idx =
+              human !== null && !sent.away.has(human)
+                ? human
+                : nearestAvailable(nextAwayOutfield, sent.away);
+            if (idx >= 0) {
+              nextAwayOutfield = nextAwayOutfield.map((p, i) => (i === idx ? takerBody : p));
+              possessionGrant = { team: "away", index: idx };
+            }
+          }
+          if (possessionGrant) {
+            const glued = possessionBallPosition(takerBody, 0);
+            placedBall = { ...placedBall, position: { x: glued.x, y: BALL_RADIUS, z: glued.z } };
           }
         }
 
