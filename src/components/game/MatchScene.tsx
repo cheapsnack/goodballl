@@ -42,7 +42,8 @@ import {
   penaltySpot,
   RESTART_CLEARANCE,
 } from "../../game/logic/restarts";
-import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
+import { playAward, playCard, playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
+import { pickTakerIndex, takerPlacement } from "../../game/logic/setpiece";
 import { attemptTackleImpulse, detectFoulOnOpponent, tackleDash, TACKLE_TUNING } from "../../game/logic/tackle";
 import { cardForFoul, type Booking } from "../../game/logic/bookings";
 import { getClub, playerAt } from "../../game/data/clubs";
@@ -560,48 +561,17 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           // just ahead of a possessor's heading, so facing the corner flag
           // (or the touchline) shoved the ball straight back over the line
           // and restarted the same corner/throw over and over.
-          const attackGoalX =
-            team === "home" ? -HOME_DEFEND_SIDE * PITCH.halfLength : -AWAY_DEFEND_SIDE * PITCH.halfLength;
-          const aimAt =
-            type === "corner"
-              ? { x: attackGoalX * 0.86, z: 0 }
-              : type === "penalty" || type === "freekick"
-                ? { x: attackGoalX, z: 0 }
-                : { x: 0, z: 0 };
-          const dx = aimAt.x - spot.x;
-          const dz = aimAt.z - spot.z;
-          const len = Math.hypot(dx, dz) || 1;
-          // Corners used to place the taker *outside* the ball (toward the
-          // flag), which left the glued ball less than a metre from two
-          // boundaries — one touch and it went straight back out, restarting
-          // the same corner forever. Now the taker stands a safe distance
-          // inside the pitch and the ball is glued in front of them.
-          const inset = type === "corner" ? 1.6 : -1.1;
-          const takerPos = {
-            x: clamp(spot.x + (dx / len) * inset, -PITCH.halfLength + 2, PITCH.halfLength - 2),
-            z: clamp(spot.z + (dz / len) * inset, -PITCH.halfWidth + 2, PITCH.halfWidth - 2),
-          };
+          const { aimAt, takerPos, heading } = takerPlacement(type, spot, team);
           const takerBody: Kinematics = {
             position: { x: takerPos.x, y: 0, z: takerPos.z },
             velocity: { x: 0, y: 0, z: 0 },
-            heading: headingTo(takerPos, aimAt),
+            heading,
           };
           // Pick the taker: the human's player when this side is human-run,
-          // otherwise whichever available AI player is nearest the spot —
+          // otherwise the nearest available (not sent off) AI player —
           // without this an AI corner just sat there with nobody on it.
-          const nearestAvailable = (bodies: Kinematics[], out: Set<number>) => {
-            let best = -1;
-            let bestD = Infinity;
-            bodies.forEach((b, i) => {
-              if (out.has(i)) return;
-              const d = Math.hypot(b.position.x - spot.x, b.position.z - spot.z);
-              if (d < bestD) {
-                bestD = d;
-                best = i;
-              }
-            });
-            return best;
-          };
+          const nearestAvailable = (bodies: Kinematics[], out: Set<number>) =>
+            pickTakerIndex(bodies, out, spot);
           const sent = sentOffRef.current;
           if (team === "home") {
             const idx = sent.home.has(store.controlledIndex)
@@ -626,6 +596,14 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
             const glued = possessionBallPosition(takerBody, 0);
             placedBall = { ...placedBall, position: { x: glued.x, y: BALL_RADIUS, z: glued.z } };
           }
+          useGameStore.getState().setDebugSetPiece({
+            type,
+            team,
+            spot,
+            takerPos,
+            aimAt,
+            takerIndex: possessionGrant?.index ?? -1,
+          });
         }
 
         useGameStore.setState({
@@ -1032,6 +1010,22 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
         possession: null,
       });
       playWhistle();
+      playCard(color);
+      useGameStore.getState().showAlert({
+        kind: "card",
+        title: color === "red" ? "Red card" : "Yellow card",
+        subtitle: `${playerName} — ${inBox ? "penalty" : "free kick"}`,
+        accent: color === "red" ? "#ef4444" : "#facc15",
+      });
+      if (inBox) {
+        playAward("penalty");
+        useGameStore.getState().showAlert({
+          kind: "penalty",
+          title: "Penalty!",
+          subtitle: victimTeam === "home" ? "To you" : "Against you",
+          accent: "#38bdf8",
+        });
+      }
     };
 
     if (tackleState.current.active > 0 && (restartLock === null || restartLock === "home")) {
@@ -1303,6 +1297,15 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
         statusTimer: MATCH_TUNING.restartPause,
       });
       playWhistle();
+      if (outOfBounds.type === "corner") {
+        playAward("corner");
+        useGameStore.getState().showAlert({
+          kind: "corner",
+          title: "Corner",
+          subtitle: outOfBounds.team === "home" ? "To you" : "Against you",
+          accent: "#38bdf8",
+        });
+      }
       maybeBroadcastState();
       return;
     }
