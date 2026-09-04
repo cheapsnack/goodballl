@@ -437,6 +437,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
           const awayKeysNow = netRole === "host" ? guestInputRef.current : input2.current;
 
           const homeOutfield = store.homeOutfield.map((p, i) => {
+            if (sentHome.has(i)) return benchBody("home", i);
             const params = homeParams[i] ?? homeParams[0]!;
             if (i === controlledIndex) {
               return clampToPitch(stepMovement(p, keys, params, dt), PITCH.halfLength, PITCH.halfWidth);
@@ -445,6 +446,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
             return clampToPitch(stepMovement(p, ai, params, dt), PITCH.halfLength, PITCH.halfWidth);
           });
           const awayOutfield = store.awayOutfield.map((p, i) => {
+            if (sentAway.has(i)) return benchBody("away", i);
             const params = awayParams[i] ?? awayParams[0]!;
             if (hasAwayHumanNow && i === awayControlledIndex) {
               return clampToPitch(stepMovement(p, awayKeysNow, params, dt), PITCH.halfLength, PITCH.halfWidth);
@@ -837,9 +839,11 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     // zonal targeting; final ball placement (glued to whoever ends up with
     // it) happens afterward, once everyone's new position is known.
     const homePressers = presserIndices(store.homeOutfield, homeXI.map(e => e.role), store.ball, chaserRef.current.home);
+    for (const i of sentHome) homePressers.delete(i);
     chaserRef.current.home = homePressers;
     const homeGoalX = -HOME_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — home attacks here
     const homeOutfield = store.homeOutfield.map((p, i) => {
+      if (sentHome.has(i)) return benchBody("home", i);
       if (i === controlledIndex) return controlled;
 
       const shotState = homeShotState[i]!;
@@ -908,9 +912,11 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
 
     // --- away outfield (AI, except a connected guest's/local P2's player) ---
     const awayPressers = presserIndices(store.awayOutfield, awayXI.map(e => e.role), store.ball, chaserRef.current.away);
+    for (const i of sentAway) awayPressers.delete(i);
     chaserRef.current.away = awayPressers;
     const awayGoalX = -AWAY_DEFEND_SIDE * PITCH.halfLength; // opponent's goal — away attacks here
     const awayOutfield = store.awayOutfield.map((p, i) => {
+      if (sentAway.has(i)) return benchBody("away", i);
       if (hasAwayHuman && i === awayControlledIndex && awayControlled) return awayControlled;
 
       const shotState = awayShotState[i]!;
@@ -1207,12 +1213,14 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
       if (restartLock === null || restartLock === "home") {
         for (let i = 0; i < homeOutfield.length; i++) {
           if (excluded && excluded.team === "home" && excluded.index === i) continue;
+          if (sentHome.has(i)) continue;
           candidates.push({ team: "home", index: i, body: bodyOf("home", i) });
         }
       }
       if (restartLock === null || restartLock === "away") {
         for (let i = 0; i < awayOutfield.length; i++) {
           if (excluded && excluded.team === "away" && excluded.index === i) continue;
+          if (sentAway.has(i)) continue;
           candidates.push({ team: "away", index: i, body: bodyOf("away", i) });
         }
       }
