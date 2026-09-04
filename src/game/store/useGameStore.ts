@@ -15,6 +15,26 @@ import type { Possession } from "../logic/possession";
 import type { Booking } from "../logic/bookings";
 import { DEFAULT_PENALTY_LEVEL, initShootout, type PenaltyLevel, type ShootoutState } from "../logic/penalties";
 
+/** A short-lived HUD flash: "Corner", "Penalty!", "Red card" etc. */
+export type MatchAlert = {
+  id: number;
+  kind: "card" | "corner" | "penalty" | "freekick";
+  title: string;
+  subtitle: string;
+  /** accent colour for the flash border */
+  accent: string;
+};
+
+/** Set-piece placement snapshot used only by the debug overlay. */
+export type SetPieceDebug = {
+  type: string;
+  team: TeamSide;
+  spot: { x: number; z: number };
+  takerPos: { x: number; z: number };
+  aimAt: { x: number; z: number };
+  takerIndex: number;
+};
+
 export const PITCH = {
   length: FIELD.length,
   width: FIELD.width,
@@ -131,6 +151,20 @@ type GameState = {
   possession: Possession | null;
   /** Every card shown in this match, in chronological order. Bottom-of-screen HUD reads from this. */
   bookings: Booking[];
+  /**
+   * Transient on-screen flash for a state change the player must notice
+   * (card shown, corner or penalty awarded). Rendered by the HUD and cleared
+   * on a timer; `id` makes repeats of the same text re-trigger the animation.
+   */
+  matchAlert: MatchAlert | null;
+  showAlert: (alert: Omit<MatchAlert, "id">) => void;
+  clearAlert: (id: number) => void;
+  /** Developer overlay: draws set-piece taker/target vectors. Toggled with the on-screen Debug button. */
+  debugOverlay: boolean;
+  toggleDebugOverlay: () => void;
+  /** Last set-piece placement computed by the scene, for the debug overlay. */
+  debugSetPiece: SetPieceDebug | null;
+  setDebugSetPiece: (debug: SetPieceDebug | null) => void;
   /** Penalty shootout progress — only meaningful while matchStatus is "penalties". */
   shootout: ShootoutState;
   /** Difficulty for the penalty shootout only — set from the shootout screen. */
@@ -216,6 +250,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   lastScorer: null,
   lastTouch: "home",
   bookings: [],
+  matchAlert: null,
+  showAlert: (alert) => set({ matchAlert: { ...alert, id: Date.now() + Math.random() } }),
+  clearAlert: (id) => set((s) => (s.matchAlert?.id === id ? { matchAlert: null } : {})),
+  debugOverlay: false,
+  toggleDebugOverlay: () => set((s) => ({ debugOverlay: !s.debugOverlay })),
+  debugSetPiece: null,
+  setDebugSetPiece: (debugSetPiece) => set({ debugSetPiece }),
   shootout: initShootout(),
   penaltyLevel: DEFAULT_PENALTY_LEVEL,
 
@@ -282,6 +323,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       lastScorer: null,
       lastTouch: "home",
       bookings: [],
+      matchAlert: null,
+      debugSetPiece: null,
       shootout: initShootout(),
     }),
 }));
