@@ -278,6 +278,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     s.homeOutfield.forEach((p, i) => {
       const ref = homeRefs.current[i];
       if (!ref) return;
+      // Sent-off players are removed from the field entirely.
+      ref.visible = !sentOffRef.current.home.has(i);
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
       ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
@@ -285,6 +287,7 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
     s.awayOutfield.forEach((p, i) => {
       const ref = awayRefs.current[i];
       if (!ref) return;
+      ref.visible = !sentOffRef.current.away.has(i);
       ref.position.set(p.position.x, 0, p.position.z);
       ref.rotation.y = p.heading;
       ref.userData["speed"] = Math.hypot(p.velocity.x, p.velocity.z);
