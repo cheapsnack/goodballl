@@ -1013,14 +1013,20 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
       const minute = Math.floor(matchTime / 60) + 1;
       const booking: Booking = { team: offenderTeam, playerIndex: offenderIndex, playerName, color, minute };
       bookings = [...bookings, booking];
-      // Free kick: the fouled side gets the ball at the foul spot (clamp inside pitch).
+      // Foul inside the offender's own box → penalty from the spot.
+      // Anywhere else → a free kick to the fouled side where it happened.
+      const defendSide = offenderTeam === "home" ? HOME_DEFEND_SIDE : AWAY_DEFEND_SIDE;
+      const victimTeam: TeamSide = offenderTeam === "home" ? "away" : "home";
+      const inBox = isInPenaltyArea(foulPos, defendSide);
       const clampX = Math.max(-PITCH.halfLength + 3, Math.min(PITCH.halfLength - 3, foulPos.x));
       const clampZ = Math.max(-PITCH.halfWidth + 3, Math.min(PITCH.halfWidth - 3, foulPos.z));
       useGameStore.setState({
         bookings,
-        restart: { type: "throwin", team: offenderTeam === "home" ? "away" : "home", position: { x: clampX, z: clampZ } },
+        restart: inBox
+          ? { type: "penalty" as const, team: victimTeam, position: penaltySpot(defendSide) }
+          : { type: "freekick" as const, team: victimTeam, position: { x: clampX, z: clampZ } },
         matchStatus: "restart",
-        statusTimer: MATCH_TUNING.restartPause,
+        statusTimer: inBox ? MATCH_TUNING.restartPause + 0.8 : MATCH_TUNING.restartPause,
         possession: null,
       });
       playWhistle();
