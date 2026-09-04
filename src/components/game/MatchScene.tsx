@@ -144,6 +144,8 @@ export function MatchScene({ getTouchInput }: { getTouchInput?: () => PlayerInpu
   const guestInputRef = useRef<GuestInputPayload>(IDLE_GUEST_INPUT);
   /** Host-side: throttles how often a state snapshot is broadcast. */
   const broadcastTick = useRef(0);
+  /** Indices of players sent off (red card) per side — they leave the pitch. */
+  const sentOffRef = useRef({ home: new Set<number>(), away: new Set<number>() });
   /**
    * The three.js elapsedTime at the moment we last wrote the current
    * `store.matchTime` value — used to compute the wall-clock diff each frame
