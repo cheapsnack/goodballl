@@ -5,13 +5,13 @@ export const Route = createFileRoute("/")({
   ssr: false, // <Canvas> must never render on the server
   head: () => ({
     meta: [
-      { title: "Arcade Football — 3D Kickoff Match" },
+      { title: "Goodball - Arcade Football" },
       {
         name: "description",
         content:
           "A 3D arcade football game built with React Three Fiber: charge-up shooting, goalkeeper and defender AI, a match clock and a broadcast HUD.",
       },
-      { property: "og:title", content: "Arcade Football — 3D Kickoff Match" },
+      { property: "og:title", content: "Goodball - Arcade Football" },
       {
         property: "og:description",
         content:
