@@ -38,6 +38,8 @@ import {
   clearSpaceAroundRestart,
   detectOutOfBounds,
   headingTo,
+  isInPenaltyArea,
+  penaltySpot,
   RESTART_CLEARANCE,
 } from "../../game/logic/restarts";
 import { playCrowdGroan, playCrowdRoar, playKick, playWhistle } from "../../game/logic/audio";
